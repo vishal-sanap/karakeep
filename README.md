@@ -2,17 +2,19 @@
 
 A personal library that captures what you find interesting, remembers *why*, and lets you find it again later.
 
-See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 1 (Retrieval).**
+See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 2 (Threads).** Everything runs locally: no AI API keys.
 
 ## Layout
 
 ```
 web/                  Next.js app (UI + API) and the worker (src/worker)
-  src/lib/            capture, data access, search, URL normalisation, SSRF-safe fetcher, metadata, text extraction
-  src/lib/ai/         Claude (summary, tags, "why related") and Voyage embeddings
-  src/worker/         pg-boss worker: metadata step, then enrich (content -> summary + tags -> embedding)
+  src/lib/            capture, data access, search, rediscover, URL normalisation, SSRF-safe fetcher, metadata,
+                      text extraction, keywords (extractive summary, tags, thread names)
+  src/lib/ai/         local embeddings (bge-small-en-v1.5 via transformers.js)
+  src/lib/threads/    clustering, stable thread ids, build + queries
+  src/worker/         pg-boss worker: metadata -> enrich (content, summary + tags, embedding); nightly threads
 extension/            Chrome MV3 extension (popup + Ctrl/Cmd+Shift+S)
-supabase/migrations/  SQL schema (discovery, api_token, relation, pgvector, RLS)
+supabase/migrations/  SQL schema (discovery, api_token, relation, thread, pgvector, RLS)
 ```
 
 ## Setup
@@ -30,16 +32,17 @@ cp web/.env.example web/.env.local   # fill in Supabase values
 2. **Auth → URL Configuration:** set Site URL to your app URL and add `http://localhost:3000/auth/callback` (plus your production `/auth/callback`) to Redirect URLs.
 3. Auth → Providers: Email (magic link) is used by default.
 
-### AI (Phase 1)
+### Local AI (no keys)
 
-Set these in `web/.env.local` for both the app and the worker. Each is optional:
+Summaries, tags and embeddings are computed on your machine; nothing is sent to an AI service.
 
-| Key | Enables | Without it |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | AI summary + 3-7 tags per item; "Why related?" explanations | Items keep the page's own description |
-| `VOYAGE_API_KEY` | Embeddings: vague-description search and related items | Search is full-text only; no related items |
+- **Embeddings:** `Xenova/bge-small-en-v1.5` (384-dim, quantized) via transformers.js. Downloaded once (~35 MB) into `web/.cache/models` on first use; about 0.3-0.5 GB RAM across the worker and web server. Powers vague-description search, related items and threads.
+- **Summary:** the page's own description, or its first two substantial sentences.
+- **Tags:** keyword extraction from title, description and page text, weighted against your library.
+- **Threads:** nightly average-linkage clustering of the embeddings (03:00 UTC; `THREADS_CRON` / `THREADS_TZ`), only when the library changed. A thread needs 3+ items; names come from the members' shared keywords. "Rebuild threads" on the Threads page runs it now.
+- **Rediscover:** never-opened items, older items related to this week's saves, and where active threads began.
 
-One Claude call per item (`claude-opus-5-5` at low effort by default; override with `ENRICH_MODEL`). Page text is fetched, truncated to ~12k characters, sent as quoted data and never stored. On start the worker backfills items saved before the keys were set.
+Page text is fetched, used, and discarded; only the summary, tags and embedding are stored. The worker re-processes items saved before an embedding-model change.
 
 ### Run
 
@@ -48,7 +51,7 @@ pnpm worker   # once first: creates the pg-boss schema and queue
 pnpm dev      # http://localhost:3000
 ```
 
-The worker must be running for saved items to get titles, favicons, summaries and embeddings. Items saved while it's down stay `pending` and are swept up on restart.
+The worker must be running for saved items to get titles, favicons, summaries, tags, embeddings and threads. Items saved while it's down stay `pending` and are swept up on restart.
 
 ### Extension
 
@@ -70,8 +73,10 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 ## Deploy notes
 
-- **Web:** Vercel (or any Node host). Set the env vars from `.env.example`.
+- **Web:** any Node host (`pnpm --filter web build && pnpm --filter web start`). Set the env vars from `.env.example`.
 - **Worker:** a long-running process (Railway, Fly.io, Render, a VPS): `pnpm --filter web worker`. It can't run on Vercel serverless.
+- **Web:** search embeds queries with the local model (native ONNX runtime), so host the web app on a regular Node server too, e.g. alongside the worker, rather than Vercel serverless functions.
+- On Windows, stopping `pnpm worker` can leave its `node` child running and holding database connections; kill the whole process tree.
 - `DATABASE_URL` should use Supabase's session pooler (port 5432) or a direct connection.
 
 ## Security notes

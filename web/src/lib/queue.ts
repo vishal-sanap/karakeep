@@ -4,11 +4,13 @@ import { env } from "./env";
 export const QUEUES = {
   metadata: "discovery-metadata",
   enrich: "discovery-enrich",
+  threads: "threads-build",
 } as const;
 
 export type MetadataJob = { discoveryId: string };
-/** `embedOnly`: re-embed from stored fields (e.g. after a why-note edit); no fetch, no LLM call. */
-export type EnrichJob = { discoveryId: string; embedOnly?: boolean };
+export type EnrichJob = { discoveryId: string };
+/** No userId: the nightly run over every user (skipping unchanged libraries). */
+export type ThreadsJob = { userId?: string; force?: boolean };
 
 declare global {
   var __unfoldBoss: Promise<PgBoss> | undefined;
@@ -43,9 +45,13 @@ export async function enqueueMetadata(discoveryId: string) {
   });
 }
 
-export async function enqueueEnrich(discoveryId: string, opts: { embedOnly?: boolean } = {}) {
+export async function enqueueEnrich(discoveryId: string) {
   const boss = await senderBoss();
-  await boss.send(QUEUES.enrich, { discoveryId, embedOnly: opts.embedOnly } satisfies EnrichJob, {
-    singletonKey: `${discoveryId}:${opts.embedOnly ? "embed" : "full"}`,
-  });
+  await boss.send(QUEUES.enrich, { discoveryId } satisfies EnrichJob, { singletonKey: discoveryId });
+}
+
+/** "Rebuild threads" button: one user, forced. */
+export async function enqueueThreadBuild(userId: string) {
+  const boss = await senderBoss();
+  await boss.send(QUEUES.threads, { userId, force: true } satisfies ThreadsJob, { singletonKey: userId });
 }

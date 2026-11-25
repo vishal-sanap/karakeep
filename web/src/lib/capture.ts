@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { saveDiscovery, updateWhyNote } from "./discoveries";
 import { enqueueEnrich, enqueueMetadata } from "./queue";
-import { aiConfig } from "./env";
 import { parseHttpUrl } from "./url";
 import { sql } from "./db";
 
@@ -44,12 +43,10 @@ export async function capture(userId: string, input: z.input<typeof captureInput
 export async function setWhyNote(userId: string, id: string, whyNote: string | null) {
   const note = whyNote?.trim().slice(0, 500) || null;
   if (!(await updateWhyNote(userId, id, note))) return false;
-  if (aiConfig().embed) {
-    try {
-      await enqueueEnrich(id, { embedOnly: true });
-    } catch (err) {
-      console.error("[why-note] re-embed enqueue failed", err);
-    }
+  try {
+    await enqueueEnrich(id);
+  } catch (err) {
+    console.error("[why-note] re-embed enqueue failed", err);
   }
   return true;
 }

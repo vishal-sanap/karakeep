@@ -1,18 +1,15 @@
-import { aiConfig } from "./env";
 import { embedQuery, toPgVector } from "./ai/embeddings";
 import { listDiscoveries } from "./discoveries";
 
 /**
- * Library search: hybrid (full-text + vector, fused by RRF) when embeddings
- * are configured; full-text only otherwise or if the query embedding fails.
- * `degraded` is true when embeddings are configured but the query embedding
- * failed (e.g. a provider rate limit), so callers can say so.
+ * Library search: hybrid (full-text + local vector similarity, fused by RRF).
+ * Falls back to full-text only if the query embedding fails; `degraded` says so.
  */
 export async function searchDiscoveries(userId: string, q?: string, limit?: number) {
   const query = q?.trim();
   let queryEmbedding: string | null = null;
   let degraded = false;
-  if (query && aiConfig().embed) {
+  if (query) {
     try {
       queryEmbedding = toPgVector(await embedQuery(query.slice(0, 1000)));
     } catch (err) {

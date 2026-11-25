@@ -4,17 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
 import { capture, CaptureError, setWhyNote } from "@/lib/capture";
-import {
-  cachedExplanation,
-  deleteAllData,
-  deleteDiscovery,
-  dismissRelation,
-  getPair,
-  saveExplanation,
-} from "@/lib/discoveries";
-import { explainRelation, RefusalError, SummariesDisabledError } from "@/lib/ai/claude";
+import { deleteAllData, deleteDiscovery, dismissRelation, getPair } from "@/lib/discoveries";
 import { z } from "zod";
 import { createApiToken, revokeApiToken } from "@/lib/tokens";
+import { enqueueThreadBuild } from "@/lib/queue";
 import { supabaseServer } from "@/lib/supabase/server";
 
 async function requireUser() {
@@ -55,28 +48,6 @@ export async function updateWhyAction(id: string, whyNote: string) {
 }
 
 const uuid = z.string().uuid();
-
-export type ExplainState = { explanation?: string; error?: string };
-
-/** "Why are these related?": generated on first open, then served from the cache. */
-export async function explainRelationAction(id: string, otherId: string): Promise<ExplainState> {
-  const userId = await requireUser();
-  if (!uuid.safeParse(id).success || !uuid.safeParse(otherId).success || id === otherId) return { error: "Not found." };
-  const cached = await cachedExplanation(userId, id, otherId);
-  if (cached) return { explanation: cached };
-  const p = await getPair(userId, id, otherId);
-  if (!p) return { error: "Not found." };
-  try {
-    const explanation = await explainRelation(p.a, p.b);
-    await saveExplanation(userId, id, otherId, explanation, p.similarity);
-    return { explanation };
-  } catch (err) {
-    if (err instanceof SummariesDisabledError) return { error: "Explanations need an Anthropic API key." };
-    if (err instanceof RefusalError) return { error: "Couldn't explain this connection." };
-    console.error("[explain]", err);
-    return { error: "Couldn't explain this right now. Try again." };
-  }
-}
 
 /** "Not related": hide this pair for good. */
 export async function dismissRelationAction(id: string, otherId: string) {
@@ -120,4 +91,16 @@ export async function signOutAction() {
   const supabase = await supabaseServer();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/** "Rebuild threads": queue a forced clustering run for this user. */
+export async function rebuildThreadsAction(): Promise<{ ok: boolean }> {
+  const userId = await requireUser();
+  try {
+    await enqueueThreadBuild(userId);
+    return { ok: true };
+  } catch (err) {
+    console.error("[threads] enqueue failed", err);
+    return { ok: false };
+  }
 }

@@ -14,11 +14,6 @@ const schema = z
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
     YOUTUBE_API_KEY: optionalKey,
-    // Phase 1 AI. Each is optional: without it that step is skipped and items
-    // stay usable with metadata only (search falls back to full-text).
-    ANTHROPIC_API_KEY: optionalKey,
-    VOYAGE_API_KEY: optionalKey,
-    ENRICH_MODEL: z.string().default("claude-opus-5-5"),
     FETCH_USER_AGENT: z
       .string()
       .default("unfold/0.1 (+personal library fetcher)"),
@@ -39,8 +34,3 @@ export function env() {
   return cached;
 }
 
-/** Which Phase 1 AI steps are configured. */
-export function aiConfig() {
-  const e = env();
-  return { summarize: Boolean(e.ANTHROPIC_API_KEY), embed: Boolean(e.VOYAGE_API_KEY) };
-}

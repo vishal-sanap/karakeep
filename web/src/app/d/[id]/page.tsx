@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { sessionUserId } from "@/lib/auth";
 import { getDiscovery, relatedDiscoveries } from "@/lib/discoveries";
-import { aiConfig } from "@/lib/env";
+import { sharedTerms } from "@/lib/keywords";
+import { threadsForDiscovery } from "@/lib/threads/queries";
 import { LocalDate } from "@/components/local-date";
 import { RelatedList } from "@/components/related-list";
 import { TagList } from "@/components/tag-list";
@@ -16,9 +17,12 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
   const id = z.string().uuid().safeParse((await params).id);
   if (!id.success) notFound();
 
-  const [d, related] = await Promise.all([getDiscovery(userId, id.data), relatedDiscoveries(userId, id.data)]);
+  const [d, related, threads] = await Promise.all([
+    getDiscovery(userId, id.data),
+    relatedDiscoveries(userId, id.data),
+    threadsForDiscovery(userId, id.data),
+  ]);
   if (!d) notFound();
-  const ai = aiConfig();
 
   return (
     <div className="space-y-6">
@@ -48,6 +52,19 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
         {d.summary && <p className="text-sm text-stone-700 dark:text-stone-300">{d.summary}</p>}
         {d.why_note && <p className="border-l-2 border-amber-400 pl-2 text-sm italic">{d.why_note}</p>}
         <TagList tags={d.tags} />
+        {threads.length > 0 && (
+          <p className="text-sm text-stone-500">
+            In {threads.length === 1 ? "thread" : "threads"}{" "}
+            {threads.map((t, i) => (
+              <span key={t.id}>
+                {i > 0 && ", "}
+                <Link href={`/threads/${t.id}`} className="font-medium text-stone-700 underline underline-offset-2 dark:text-stone-300">
+                  {t.name}
+                </Link>
+              </span>
+            ))}
+          </p>
+        )}
 
         <a
           href={`/open/${d.id}`}
@@ -62,12 +79,21 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-stone-500">Related in your library</h2>
         {related.length > 0 ? (
-          <RelatedList sourceId={d.id} items={JSON.parse(JSON.stringify(related))} canExplain={ai.summarize} />
+          <RelatedList
+            sourceId={d.id}
+            items={related.map((r) => ({
+              id: r.id,
+              title: r.title,
+              original_url: r.original_url,
+              domain: r.domain,
+              favicon_url: r.favicon_url,
+              similarity: r.similarity,
+              shared: sharedTerms(d, r),
+            }))}
+          />
         ) : (
           <p className="text-sm text-stone-500">
-            {!ai.embed
-              ? "Related items need an embedding provider (VOYAGE_API_KEY)."
-              : "Nothing closely related yet. This fills in as your library grows."}
+            {d.enriched_at ? "Nothing closely related yet. This fills in as your library grows." : "Still processing this item…"}
           </p>
         )}
       </section>

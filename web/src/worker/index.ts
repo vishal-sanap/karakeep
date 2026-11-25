@@ -11,8 +11,8 @@ import { sql } from "@/lib/db";
 import { fetchMetadata, PermanentFetchError } from "@/lib/metadata";
 import { FetchBlockedError } from "@/lib/fetcher";
 import { stalePendingIds } from "@/lib/discoveries";
-import { QUEUES, type EnrichJob, type MetadataJob } from "@/lib/queue";
-import { aiConfig } from "@/lib/env";
+import { QUEUES, type EnrichJob, type MetadataJob, type ThreadsJob } from "@/lib/queue";
+import { buildThreads, usersWithEmbeddings } from "@/lib/threads/build";
 import { ENRICH_RETRY_LIMIT, handleEnrich, unenrichedIds } from "./enrich";
 
 const RETRY_LIMIT = 3;
@@ -40,10 +40,7 @@ async function handleMetadata([job]: Job<MetadataJob>[]) {
         error         = null
       where id = ${discoveryId}`;
     console.log(`[metadata] ready ${discoveryId} ${m.title ?? ""}`);
-    const ai = aiConfig();
-    if (ai.summarize || ai.embed) {
-      await boss.send(QUEUES.enrich, { discoveryId } satisfies EnrichJob, { singletonKey: `${discoveryId}:full` });
-    }
+    await boss.send(QUEUES.enrich, { discoveryId } satisfies EnrichJob, { singletonKey: discoveryId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Partial records stay usable: on the final attempt mark failed, keep the URL.
@@ -56,6 +53,18 @@ async function handleMetadata([job]: Job<MetadataJob>[]) {
       where id = ${discoveryId}`;
     console.warn(`[metadata] ${final ? "failed" : "retrying"} ${discoveryId}: ${message}`);
     if (!permanent) throw err;
+  }
+}
+
+async function handleThreads([job]: Job<ThreadsJob>[]) {
+  const users = job.data.userId ? [job.data.userId] : await usersWithEmbeddings();
+  for (const userId of users) {
+    const r = await buildThreads(userId, { force: job.data.force });
+    console.log(
+      r.skipped
+        ? `[threads] ${userId}: unchanged, skipped`
+        : `[threads] ${userId}: ${r.threads} threads from ${r.items} items (+${r.created} new, -${r.removed} removed)`,
+    );
   }
 }
 
@@ -81,9 +90,14 @@ async function main() {
     expireInSeconds: 180,
   });
 
+  await boss.createQueue(QUEUES.threads, { policy: "singleton", retryLimit: 1, expireInSeconds: 600 });
+  // Nightly clustering; each user is skipped if their library hasn't changed.
+  await boss.schedule(QUEUES.threads, process.env.THREADS_CRON ?? "0 3 * * *", {}, { tz: process.env.THREADS_TZ ?? "UTC" });
+
   await boss.work<MetadataJob>(QUEUES.metadata, { batchSize: 1, localConcurrency: 4 }, handleMetadata);
-  // Low concurrency keeps LLM/embedding calls under provider rate limits.
+  // Embedding runs on this machine's CPU; two at a time keeps the worker light.
   await boss.work<EnrichJob>(QUEUES.enrich, { batchSize: 1, localConcurrency: 2 }, handleEnrich);
+  await boss.work<ThreadsJob>(QUEUES.threads, { batchSize: 1 }, handleThreads);
 
   // Safety net: re-enqueue items stuck in `pending` (e.g. enqueue failed after insert).
   const sweep = async () => {
@@ -93,7 +107,7 @@ async function main() {
       }
       // Backfill: ready items not yet enriched for a configured provider.
       for (const id of await unenrichedIds()) {
-        await boss.send(QUEUES.enrich, { discoveryId: id } satisfies EnrichJob, { singletonKey: `${id}:full` });
+        await boss.send(QUEUES.enrich, { discoveryId: id } satisfies EnrichJob, { singletonKey: id });
       }
     } catch (err) {
       console.error("[sweep]", err);
@@ -102,8 +116,7 @@ async function main() {
   await sweep();
   const sweepTimer = setInterval(sweep, 5 * 60_000);
 
-  const ai = aiConfig();
-  console.log(`[worker] started (summaries ${ai.summarize ? "on" : "off: no ANTHROPIC_API_KEY"}, embeddings ${ai.embed ? "on" : "off: no VOYAGE_API_KEY"})`);
+  console.log("[worker] started");
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, stopping`);

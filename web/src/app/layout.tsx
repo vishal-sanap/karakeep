@@ -24,6 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="text-lg font-semibold tracking-tight">unfold</Link>
           <nav className="flex gap-4 text-sm text-stone-500">
             <Link href="/" className="hover:text-stone-900 dark:hover:text-stone-100">Library</Link>
+            <Link href="/threads" className="hover:text-stone-900 dark:hover:text-stone-100">Threads</Link>
+            <Link href="/rediscover" className="hover:text-stone-900 dark:hover:text-stone-100">Rediscover</Link>
             <Link href="/settings" className="hover:text-stone-900 dark:hover:text-stone-100">Settings</Link>
           </nav>
         </header>

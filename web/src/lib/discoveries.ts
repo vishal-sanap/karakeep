@@ -29,14 +29,13 @@ const D_COLUMNS = (db: postgres.Sql) => db`
   d.domain, d.thumbnail_url, d.favicon_url, d.tags, d.status, d.saved_at, d.last_opened_at, d.enriched_at`;
 
 /**
- * Cosine-distance cut-offs (distance = 1 - similarity), voyage-3.5-lite.
- * Calibrated on a 3-item library (Nov 2026); revisit at ~20+ items:
- * - query -> correct item scored 0.39-0.56; nonsense queries still reach ~0.43,
- *   so search relies on ranking more than on this floor.
- * - unrelated item pairs scored 0.60-0.72 (this model's baseline is high).
+ * Cosine-distance cut-offs (distance = 1 - similarity), bge-small-en-v1.5.
+ * Calibrated on a small library (Nov 2026); revisit at ~20+ items:
+ * - query -> correct item scored 0.61-0.77; off-topic queries topped out at 0.57.
+ * - unrelated item pairs scored 0.45-0.55; a genuinely related pair 0.60.
  */
-const SEARCH_MAX_DISTANCE = 0.65; // vector-only hits need similarity >= 0.35
-const RELATED_MAX_DISTANCE = 0.25; // "related" needs similarity >= 0.75
+const SEARCH_MAX_DISTANCE = 0.42; // vector-only hits need similarity >= 0.58
+export const RELATED_MAX_DISTANCE = 0.38; // "related" (and thread linkage) needs similarity >= 0.62
 const RRF_K = 60;
 
 /**
@@ -109,13 +108,13 @@ export async function listDiscoveries(
     limit ${limit}`;
 }
 
-export type RelatedItem = Discovery & { similarity: number; explanation: string | null };
+export type RelatedItem = Discovery & { similarity: number };
 
 /** Nearest neighbours above the similarity floor, minus dismissed pairs. Computed on view. */
 export async function relatedDiscoveries(userId: string, id: string, k = 6) {
   const db = sql();
   return db<RelatedItem[]>`
-    select ${D_COLUMNS(db)}, 1 - nn.dist as similarity, r.explanation
+    select ${D_COLUMNS(db)}, 1 - nn.dist as similarity
     from (
       select d.id, d.embedding <=> src.embedding as dist
       from discovery src
@@ -145,23 +144,6 @@ export async function getPair(userId: string, id: string, otherId: string) {
   const a = rows.find((r) => r.id === id);
   const b = rows.find((r) => r.id === otherId);
   return a && b ? { a, b, similarity: a.similarity } : null;
-}
-
-export async function cachedExplanation(userId: string, id: string, otherId: string) {
-  const [a, b] = pair(id, otherId);
-  const rows = await sql()<{ explanation: string | null }[]>`
-    select explanation from relation where user_id = ${userId} and a_id = ${a} and b_id = ${b}`;
-  return rows[0]?.explanation ?? null;
-}
-
-export async function saveExplanation(userId: string, id: string, otherId: string, explanation: string, score: number | null) {
-  const [a, b] = pair(id, otherId);
-  await sql()`
-    insert into relation (user_id, a_id, b_id, score, explanation)
-    values (${userId}, ${a}, ${b}, ${score}, ${explanation})
-    on conflict (a_id, b_id) do update
-      set explanation = excluded.explanation, score = excluded.score, updated_at = now()
-    where relation.user_id = ${userId}`;
 }
 
 /** Dismissed pairs are never suggested again. Caller must verify ownership (getPair). */

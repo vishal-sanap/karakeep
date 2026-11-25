@@ -26,6 +26,11 @@ export function extractMainText(html: string, url: URL, maxChars = MAX_CONTENT_C
     // read-only in some builds; Readability still works without it
   }
 
+  // Captions, infoboxes, tables and footnote markers read as noise in a summary.
+  document
+    .querySelectorAll("figure, figcaption, table, .infobox, .thumb, .hatnote, .navbox, .mw-editsection, sup.reference, [role=note]")
+    .forEach((el) => el.remove());
+
   let text = "";
   try {
     const article = new Readability(document as unknown as Document, { charThreshold: 200 }).parse();

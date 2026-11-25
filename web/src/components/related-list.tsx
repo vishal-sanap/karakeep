@@ -1,32 +1,30 @@
 "use client";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { dismissRelationAction, explainRelationAction } from "@/app/actions";
+import { dismissRelationAction } from "@/app/actions";
 
 type Item = {
   id: string;
   title: string | null;
   original_url: string;
   domain: string | null;
-  summary: string | null;
   favicon_url: string | null;
   similarity: number;
-  explanation: string | null;
+  /** Tags/title words both items share: a plain, LLM-free hint at the link. */
+  shared: string[];
 };
 
-export function RelatedList({ sourceId, items, canExplain }: { sourceId: string; items: Item[]; canExplain: boolean }) {
+export function RelatedList({ sourceId, items }: { sourceId: string; items: Item[] }) {
   return (
     <ul className="space-y-2">
       {items.map((it) => (
-        <RelatedRow key={it.id} sourceId={sourceId} item={it} canExplain={canExplain} />
+        <RelatedRow key={it.id} sourceId={sourceId} item={it} />
       ))}
     </ul>
   );
 }
 
-function RelatedRow({ sourceId, item, canExplain }: { sourceId: string; item: Item; canExplain: boolean }) {
-  const [explanation, setExplanation] = useState(item.explanation);
-  const [error, setError] = useState<string | null>(null);
+function RelatedRow({ sourceId, item }: { sourceId: string; item: Item }) {
   const [hidden, setHidden] = useState(false);
   const [pending, start] = useTransition();
   if (hidden) return null;
@@ -45,30 +43,10 @@ function RelatedRow({ sourceId, item, canExplain }: { sourceId: string; item: It
             {item.title || item.original_url}
           </Link>
           <div className="text-xs text-stone-500">{item.domain}</div>
-
-          {explanation ? (
-            <p className="mt-1.5 text-sm text-stone-600 dark:text-stone-400">{explanation}</p>
-          ) : error ? (
-            <p className="mt-1.5 text-xs text-red-600">{error}</p>
-          ) : null}
-
-          <div className="mt-1.5 flex gap-3 text-xs text-stone-500">
-            {canExplain && !explanation && (
-              <button
-                disabled={pending}
-                onClick={() =>
-                  start(async () => {
-                    setError(null);
-                    const r = await explainRelationAction(sourceId, item.id);
-                    if (r.explanation) setExplanation(r.explanation);
-                    else setError(r.error ?? "Couldn't explain this.");
-                  })
-                }
-                className="hover:text-stone-900 dark:hover:text-stone-100"
-              >
-                {pending ? "Thinking…" : "Why related?"}
-              </button>
-            )}
+          {item.shared.length > 0 && (
+            <p className="mt-1.5 text-sm text-stone-600 dark:text-stone-400">Both mention: {item.shared.join(", ")}</p>
+          )}
+          <div className="mt-1.5 text-xs text-stone-500">
             <button
               disabled={pending}
               onClick={() =>
