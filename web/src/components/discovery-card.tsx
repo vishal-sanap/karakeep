@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { deleteAction, updateWhyAction } from "@/app/actions";
 import type { Discovery } from "@/lib/discoveries";
+import { LocalDate } from "./local-date";
 
 type Props = { d: Omit<Discovery, "saved_at" | "last_opened_at"> & { saved_at: string; last_opened_at: string | null }; highlight?: boolean };
 
@@ -31,7 +32,7 @@ export function DiscoveryCard({ d, highlight }: Props) {
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
             <span>{d.domain}</span>
             {d.resource_type && d.resource_type !== "webpage" && <span>· {d.resource_type}</span>}
-            <span>· {new Date(d.saved_at).toLocaleDateString()}</span>
+            <span>· <LocalDate value={d.saved_at} /></span>
             {d.status === "pending" && <span className="text-amber-600">· fetching details…</span>}
             {d.status === "failed" && <span className="text-red-600">· couldn&apos;t fetch details</span>}
           </div>

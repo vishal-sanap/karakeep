@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { createTokenAction, revokeTokenAction } from "@/app/actions";
+import { LocalDate } from "./local-date";
 
 type Token = { id: string; name: string; created_at: string; last_used_at: string | null };
 
@@ -22,8 +23,8 @@ export function TokenManager({ tokens }: { tokens: Token[] }) {
             <span>
               {t.name}
               <span className="ml-2 text-xs text-stone-500">
-                created {new Date(t.created_at).toLocaleDateString()}
-                {t.last_used_at ? `, last used ${new Date(t.last_used_at).toLocaleDateString()}` : ", never used"}
+                created <LocalDate value={t.created_at} />
+                {t.last_used_at ? (<>, last used <LocalDate value={t.last_used_at} /></>) : ", never used"}
               </span>
             </span>
             <button
