@@ -2,11 +2,22 @@
 import { useState, useTransition } from "react";
 import { deleteAction, updateWhyAction } from "@/app/actions";
 import type { Discovery } from "@/lib/discoveries";
+import Link from "next/link";
 import { LocalDate } from "./local-date";
+import { TagList } from "./tag-list";
 
-type Props = { d: Omit<Discovery, "saved_at" | "last_opened_at"> & { saved_at: string; last_opened_at: string | null }; highlight?: boolean };
+type Props = {
+  d: Omit<Discovery, "saved_at" | "last_opened_at" | "enriched_at"> & {
+    saved_at: string;
+    last_opened_at: string | null;
+    enriched_at: string | null;
+  };
+  highlight?: boolean;
+  /** AI summaries are configured, so a ready-but-unenriched item is still being summarised. */
+  summarizing?: boolean;
+};
 
-export function DiscoveryCard({ d, highlight }: Props) {
+export function DiscoveryCard({ d, highlight, summarizing }: Props) {
   const [editing, setEditing] = useState(false);
   const [why, setWhy] = useState(d.why_note ?? "");
   const [pending, start] = useTransition();
@@ -35,8 +46,14 @@ export function DiscoveryCard({ d, highlight }: Props) {
             <span>· <LocalDate value={d.saved_at} /></span>
             {d.status === "pending" && <span className="text-amber-600">· fetching details…</span>}
             {d.status === "failed" && <span className="text-red-600">· couldn&apos;t fetch details</span>}
+            {summarizing && d.status === "ready" && !d.enriched_at && <span className="text-amber-600">· summarising…</span>}
           </div>
           {d.summary && <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">{d.summary}</p>}
+          {d.tags.length > 0 && (
+            <div className="mt-2">
+              <TagList tags={d.tags} />
+            </div>
+          )}
 
           {editing ? (
             <form
@@ -65,6 +82,9 @@ export function DiscoveryCard({ d, highlight }: Props) {
           ) : null}
 
           <div className="mt-2 flex gap-3 text-xs text-stone-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+            <Link href={`/d/${d.id}`} className="hover:text-stone-700 dark:hover:text-stone-200">
+              Related
+            </Link>
             {!editing && (
               <button onClick={() => setEditing(true)} className="hover:text-stone-700 dark:hover:text-stone-200">
                 {d.why_note ? "Edit why" : "Add why"}

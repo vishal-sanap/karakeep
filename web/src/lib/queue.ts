@@ -3,9 +3,12 @@ import { env } from "./env";
 
 export const QUEUES = {
   metadata: "discovery-metadata",
+  enrich: "discovery-enrich",
 } as const;
 
 export type MetadataJob = { discoveryId: string };
+/** `embedOnly`: re-embed from stored fields (e.g. after a why-note edit); no fetch, no LLM call. */
+export type EnrichJob = { discoveryId: string; embedOnly?: boolean };
 
 declare global {
   var __unfoldBoss: Promise<PgBoss> | undefined;
@@ -37,5 +40,12 @@ export async function enqueueMetadata(discoveryId: string) {
   const boss = await senderBoss();
   await boss.send(QUEUES.metadata, { discoveryId } satisfies MetadataJob, {
     singletonKey: discoveryId,
+  });
+}
+
+export async function enqueueEnrich(discoveryId: string, opts: { embedOnly?: boolean } = {}) {
+  const boss = await senderBoss();
+  await boss.send(QUEUES.enrich, { discoveryId, embedOnly: opts.embedOnly } satisfies EnrichJob, {
+    singletonKey: `${discoveryId}:${opts.embedOnly ? "embed" : "full"}`,
   });
 }

@@ -17,11 +17,27 @@ export type Discovery = {
   status: "pending" | "ready" | "failed";
   saved_at: Date;
   last_opened_at: Date | null;
+  enriched_at: Date | null;
 };
 
+// Never select `embedding` in list queries: 1024 floats per row.
 const COLUMNS = (db: postgres.Sql) => db`
   id, original_url, canonical_url, title, summary, why_note, resource_type,
-  domain, thumbnail_url, favicon_url, tags, status, saved_at, last_opened_at`;
+  domain, thumbnail_url, favicon_url, tags, status, saved_at, last_opened_at, enriched_at`;
+const D_COLUMNS = (db: postgres.Sql) => db`
+  d.id, d.original_url, d.canonical_url, d.title, d.summary, d.why_note, d.resource_type,
+  d.domain, d.thumbnail_url, d.favicon_url, d.tags, d.status, d.saved_at, d.last_opened_at, d.enriched_at`;
+
+/**
+ * Cosine-distance cut-offs (distance = 1 - similarity), voyage-3.5-lite.
+ * Calibrated on a 3-item library (Nov 2026); revisit at ~20+ items:
+ * - query -> correct item scored 0.39-0.56; nonsense queries still reach ~0.43,
+ *   so search relies on ranking more than on this floor.
+ * - unrelated item pairs scored 0.60-0.72 (this model's baseline is high).
+ */
+const SEARCH_MAX_DISTANCE = 0.65; // vector-only hits need similarity >= 0.35
+const RELATED_MAX_DISTANCE = 0.25; // "related" needs similarity >= 0.75
+const RRF_K = 60;
 
 /**
  * Insert a discovery, or return the existing one for the same normalised URL.
@@ -39,7 +55,10 @@ export async function saveDiscovery(userId: string, url: URL, whyNote: string | 
   return rows[0];
 }
 
-export async function listDiscoveries(userId: string, opts: { q?: string; limit?: number } = {}) {
+export async function listDiscoveries(
+  userId: string,
+  opts: { q?: string; limit?: number; queryEmbedding?: string | null } = {},
+) {
   const db = sql();
   const limit = Math.min(opts.limit ?? 50, 200);
   const q = opts.q?.trim();
@@ -49,16 +68,110 @@ export async function listDiscoveries(userId: string, opts: { q?: string; limit?
       where user_id = ${userId}
       order by saved_at desc limit ${limit}`;
   }
-  // Phase 0: Postgres full-text. Phase 1 adds vector similarity + RRF.
-  return db<Discovery[]>`
-    with query as (select websearch_to_tsquery('english', ${q}) as tsq)
-    select ${COLUMNS(db)} from discovery, query
+  // Escape LIKE wildcards so "100%" or "snake_case" match literally.
+  const like = "%" + q.replace(/[\\%_]/g, "\\$&") + "%";
+  const fts = db`
+    select id, row_number() over (order by ts_rank_cd(search_tsv, tsq) desc, saved_at desc) as r
+    from discovery, websearch_to_tsquery('english', ${q}) as tsq
     where user_id = ${userId}
-      and (search_tsv @@ query.tsq
-           or title ilike ${"%" + q + "%"}
-           or original_url ilike ${"%" + q + "%"})
-    order by ts_rank_cd(search_tsv, query.tsq) desc, saved_at desc
+      and (search_tsv @@ tsq or title ilike ${like} or original_url ilike ${like})
+    limit 50`;
+
+  if (!opts.queryEmbedding) {
+    // Full-text only (no embedding provider, or the query embedding failed).
+    return db<Discovery[]>`
+      with fts as (${fts})
+      select ${D_COLUMNS(db)} from fts join discovery d on d.id = fts.id
+      order by fts.r limit ${limit}`;
+  }
+
+  // Hybrid: reciprocal rank fusion of full-text rank and vector similarity.
+  return db<Discovery[]>`
+    with fts as (${fts}),
+    vec as (
+      select id, row_number() over (order by dist) as r
+      from (
+        select id, embedding <=> ${opts.queryEmbedding}::vector as dist
+        from discovery
+        where user_id = ${userId} and embedding is not null
+        order by dist
+        limit 50
+      ) nn
+      where dist <= ${SEARCH_MAX_DISTANCE}
+    )
+    select ${D_COLUMNS(db)}
+    from discovery d
+    left join fts on fts.id = d.id
+    left join vec on vec.id = d.id
+    where d.user_id = ${userId} and (fts.id is not null or vec.id is not null)
+    order by coalesce(1.0 / (${RRF_K} + fts.r), 0) + coalesce(1.0 / (${RRF_K} + vec.r), 0) desc,
+             d.saved_at desc
     limit ${limit}`;
+}
+
+export type RelatedItem = Discovery & { similarity: number; explanation: string | null };
+
+/** Nearest neighbours above the similarity floor, minus dismissed pairs. Computed on view. */
+export async function relatedDiscoveries(userId: string, id: string, k = 6) {
+  const db = sql();
+  return db<RelatedItem[]>`
+    select ${D_COLUMNS(db)}, 1 - nn.dist as similarity, r.explanation
+    from (
+      select d.id, d.embedding <=> src.embedding as dist
+      from discovery src
+      join discovery d on d.user_id = src.user_id and d.id <> src.id and d.embedding is not null
+      where src.id = ${id} and src.user_id = ${userId} and src.embedding is not null
+      order by dist
+      limit ${k * 3}
+    ) nn
+    join discovery d on d.id = nn.id
+    left join relation r on r.a_id = least(${id}::uuid, d.id) and r.b_id = greatest(${id}::uuid, d.id)
+    where nn.dist <= ${RELATED_MAX_DISTANCE} and not coalesce(r.dismissed, false)
+    order by nn.dist
+    limit ${k}`;
+}
+
+const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
+
+/** Both discoveries, only if both belong to the user. */
+export async function getPair(userId: string, id: string, otherId: string) {
+  const db = sql();
+  const rows = await db<(Discovery & { similarity: number | null })[]>`
+    select ${D_COLUMNS(db)},
+      (select 1 - (a.embedding <=> b.embedding) from discovery a, discovery b
+        where a.id = ${id} and b.id = ${otherId}) as similarity
+    from discovery d
+    where d.user_id = ${userId} and d.id in (${id}, ${otherId})`;
+  const a = rows.find((r) => r.id === id);
+  const b = rows.find((r) => r.id === otherId);
+  return a && b ? { a, b, similarity: a.similarity } : null;
+}
+
+export async function cachedExplanation(userId: string, id: string, otherId: string) {
+  const [a, b] = pair(id, otherId);
+  const rows = await sql()<{ explanation: string | null }[]>`
+    select explanation from relation where user_id = ${userId} and a_id = ${a} and b_id = ${b}`;
+  return rows[0]?.explanation ?? null;
+}
+
+export async function saveExplanation(userId: string, id: string, otherId: string, explanation: string, score: number | null) {
+  const [a, b] = pair(id, otherId);
+  await sql()`
+    insert into relation (user_id, a_id, b_id, score, explanation)
+    values (${userId}, ${a}, ${b}, ${score}, ${explanation})
+    on conflict (a_id, b_id) do update
+      set explanation = excluded.explanation, score = excluded.score, updated_at = now()
+    where relation.user_id = ${userId}`;
+}
+
+/** Dismissed pairs are never suggested again. Caller must verify ownership (getPair). */
+export async function dismissRelation(userId: string, id: string, otherId: string) {
+  const [a, b] = pair(id, otherId);
+  await sql()`
+    insert into relation (user_id, a_id, b_id, dismissed)
+    values (${userId}, ${a}, ${b}, true)
+    on conflict (a_id, b_id) do update set dismissed = true, updated_at = now()
+    where relation.user_id = ${userId}`;
 }
 
 export async function getDiscovery(userId: string, id: string) {
@@ -76,8 +189,10 @@ export async function markOpened(userId: string, id: string) {
   return rows[0]?.original_url ?? null;
 }
 
+/** Returns false if no such discovery for this user. */
 export async function updateWhyNote(userId: string, id: string, whyNote: string | null) {
-  await sql()`update discovery set why_note = ${whyNote} where user_id = ${userId} and id = ${id}`;
+  const res = await sql()`update discovery set why_note = ${whyNote} where user_id = ${userId} and id = ${id}`;
+  return res.count > 0;
 }
 
 export async function deleteDiscovery(userId: string, id: string) {

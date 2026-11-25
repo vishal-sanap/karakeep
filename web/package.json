@@ -13,10 +13,13 @@
     "worker:dev": "node --env-file-if-exists=.env.local --watch --import tsx src/worker/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.14.0",
+    "@mozilla/readability": "0.6.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
     "cheerio": "^1.2.0",
     "ipaddr.js": "^2.5.0",
+    "linkedom": "0.18.15",
     "next": "15.5.29",
     "pg-boss": "^12.39.0",
     "postgres": "^4.1.1",

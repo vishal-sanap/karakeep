@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requestUserId } from "@/lib/auth";
-import { deleteDiscovery, getDiscovery, updateWhyNote } from "@/lib/discoveries";
+import { deleteDiscovery, getDiscovery } from "@/lib/discoveries";
+import { setWhyNote } from "@/lib/capture";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const id = idSchema.safeParse((await params).id);
   const body = z.object({ why_note: z.string().max(500).nullable() }).safeParse(await req.json().catch(() => null));
   if (!id.success || !body.success) return NextResponse.json({ error: "invalid request" }, { status: 400 });
-  await updateWhyNote(userId, id.data, body.data.why_note?.trim() || null);
+  await setWhyNote(userId, id.data, body.data.why_note);
   return new NextResponse(null, { status: 204 });
 }
 

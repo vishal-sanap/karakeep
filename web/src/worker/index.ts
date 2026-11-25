@@ -2,8 +2,8 @@
  * unfold worker: processes capture jobs from pg-boss.
  * Run: pnpm worker   (dev: pnpm worker:dev)
  *
- * Phase 0 pipeline: metadata only. Phase 1 adds `content` and `enrich` steps
- * as separate queues so each step retries independently.
+ * Pipeline: metadata -> enrich (content extraction, summary + tags, embedding).
+ * Separate queues so each step retries independently.
  */
 import { PgBoss, type Job } from "pg-boss";
 import { env } from "@/lib/env";
@@ -11,9 +11,13 @@ import { sql } from "@/lib/db";
 import { fetchMetadata, PermanentFetchError } from "@/lib/metadata";
 import { FetchBlockedError } from "@/lib/fetcher";
 import { stalePendingIds } from "@/lib/discoveries";
-import { QUEUES, type MetadataJob } from "@/lib/queue";
+import { QUEUES, type EnrichJob, type MetadataJob } from "@/lib/queue";
+import { aiConfig } from "@/lib/env";
+import { ENRICH_RETRY_LIMIT, handleEnrich, unenrichedIds } from "./enrich";
 
 const RETRY_LIMIT = 3;
+
+let boss: PgBoss;
 
 async function handleMetadata([job]: Job<MetadataJob>[]) {
   const { discoveryId } = job.data;
@@ -36,6 +40,10 @@ async function handleMetadata([job]: Job<MetadataJob>[]) {
         error         = null
       where id = ${discoveryId}`;
     console.log(`[metadata] ready ${discoveryId} ${m.title ?? ""}`);
+    const ai = aiConfig();
+    if (ai.summarize || ai.embed) {
+      await boss.send(QUEUES.enrich, { discoveryId } satisfies EnrichJob, { singletonKey: `${discoveryId}:full` });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Partial records stay usable: on the final attempt mark failed, keep the URL.
@@ -53,7 +61,7 @@ async function handleMetadata([job]: Job<MetadataJob>[]) {
 
 async function main() {
   process.env.UNFOLD_WORKER = "1";
-  const boss = new PgBoss({ connectionString: env().DATABASE_URL, max: 5 });
+  boss = new PgBoss({ connectionString: env().DATABASE_URL, max: 5 });
   boss.on("error", (err) => console.error("[pg-boss]", err));
   await boss.start();
 
@@ -65,13 +73,27 @@ async function main() {
     expireInSeconds: 60,
   });
 
+  await boss.createQueue(QUEUES.enrich, {
+    policy: "stately",
+    retryLimit: ENRICH_RETRY_LIMIT,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInSeconds: 180,
+  });
+
   await boss.work<MetadataJob>(QUEUES.metadata, { batchSize: 1, localConcurrency: 4 }, handleMetadata);
+  // Low concurrency keeps LLM/embedding calls under provider rate limits.
+  await boss.work<EnrichJob>(QUEUES.enrich, { batchSize: 1, localConcurrency: 2 }, handleEnrich);
 
   // Safety net: re-enqueue items stuck in `pending` (e.g. enqueue failed after insert).
   const sweep = async () => {
     try {
       for (const id of await stalePendingIds()) {
         await boss.send(QUEUES.metadata, { discoveryId: id }, { singletonKey: id });
+      }
+      // Backfill: ready items not yet enriched for a configured provider.
+      for (const id of await unenrichedIds()) {
+        await boss.send(QUEUES.enrich, { discoveryId: id } satisfies EnrichJob, { singletonKey: `${id}:full` });
       }
     } catch (err) {
       console.error("[sweep]", err);
@@ -80,7 +102,8 @@ async function main() {
   await sweep();
   const sweepTimer = setInterval(sweep, 5 * 60_000);
 
-  console.log("[worker] started");
+  const ai = aiConfig();
+  console.log(`[worker] started (summaries ${ai.summarize ? "on" : "off: no ANTHROPIC_API_KEY"}, embeddings ${ai.embed ? "on" : "off: no VOYAGE_API_KEY"})`);
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, stopping`);

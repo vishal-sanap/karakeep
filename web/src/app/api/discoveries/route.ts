@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { requestUserId } from "@/lib/auth";
 import { capture, CaptureError } from "@/lib/capture";
 import { corsHeaders } from "@/lib/cors";
-import { listDiscoveries } from "@/lib/discoveries";
+import { searchDiscoveries } from "@/lib/search";
 
 export const runtime = "nodejs";
 
@@ -40,6 +40,6 @@ export async function GET(req: Request) {
   const userId = await requestUserId(req);
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers });
   const q = new URL(req.url).searchParams.get("q") ?? undefined;
-  const items = await listDiscoveries(userId, { q });
-  return NextResponse.json({ items }, { headers });
+  const { items, degraded } = await searchDiscoveries(userId, q);
+  return NextResponse.json({ items, degraded }, { headers });
 }

@@ -2,16 +2,17 @@
 
 A personal library that captures what you find interesting, remembers *why*, and lets you find it again later.
 
-See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 0 (Capture).**
+See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 1 (Retrieval).**
 
 ## Layout
 
 ```
 web/                  Next.js app (UI + API) and the worker (src/worker)
-  src/lib/            capture, data access, URL normalisation, SSRF-safe fetcher, metadata
-  src/worker/         pg-boss worker: metadata step (Phase 1 adds content + enrich)
+  src/lib/            capture, data access, search, URL normalisation, SSRF-safe fetcher, metadata, text extraction
+  src/lib/ai/         Claude (summary, tags, "why related") and Voyage embeddings
+  src/worker/         pg-boss worker: metadata step, then enrich (content -> summary + tags -> embedding)
 extension/            Chrome MV3 extension (popup + Ctrl/Cmd+Shift+S)
-supabase/migrations/  SQL schema (discovery, api_token, RLS)
+supabase/migrations/  SQL schema (discovery, api_token, relation, pgvector, RLS)
 ```
 
 ## Setup
@@ -25,9 +26,20 @@ cp web/.env.example web/.env.local   # fill in Supabase values
 
 ### Supabase
 
-1. Apply the migration: paste `supabase/migrations/*.sql` into the SQL editor, or `supabase db push` with the CLI.
+1. Apply the migrations in order: paste each `supabase/migrations/*.sql` into the SQL editor, or `supabase db push` with the CLI. Phase 1 enables the `vector` extension.
 2. **Auth → URL Configuration:** set Site URL to your app URL and add `http://localhost:3000/auth/callback` (plus your production `/auth/callback`) to Redirect URLs.
 3. Auth → Providers: Email (magic link) is used by default.
+
+### AI (Phase 1)
+
+Set these in `web/.env.local` for both the app and the worker. Each is optional:
+
+| Key | Enables | Without it |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | AI summary + 3-7 tags per item; "Why related?" explanations | Items keep the page's own description |
+| `VOYAGE_API_KEY` | Embeddings: vague-description search and related items | Search is full-text only; no related items |
+
+One Claude call per item (`claude-opus-5-5` at low effort by default; override with `ENRICH_MODEL`). Page text is fetched, truncated to ~12k characters, sent as quoted data and never stored. On start the worker backfills items saved before the keys were set.
 
 ### Run
 
@@ -36,7 +48,7 @@ pnpm worker   # once first: creates the pg-boss schema and queue
 pnpm dev      # http://localhost:3000
 ```
 
-The worker must be running for saved items to get titles and favicons. Items saved while it's down stay `pending` and are swept up on restart.
+The worker must be running for saved items to get titles, favicons, summaries and embeddings. Items saved while it's down stay `pending` and are swept up on restart.
 
 ### Extension
 
