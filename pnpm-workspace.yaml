@@ -1,0 +1,7 @@
+packages:
+  - web
+  - extension
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver
