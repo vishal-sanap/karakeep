@@ -1,16 +1,43 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="popup">
-  <div id="page" class="page"></div>
-  <form id="form">
-    <input id="why" maxlength="500" placeholder="Why? (optional, Enter to save)" autofocus />
-    <button id="save" type="submit">Save</button>
+  <div class="bar">
+    <span class="wordmark">unfold</span>
+    <button id="settings" class="icon-btn" type="button" aria-label="Extension settings" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="page">
+    <span id="favicon" class="favicon-fallback" aria-hidden="true"></span>
+    <div>
+      <div id="title" class="page-title"></div>
+      <div id="domain" class="page-domain"></div>
+    </div>
+  </div>
+
+  <form id="form" class="save">
+    <label for="why" style="position:absolute;left:-9999px">Why are you saving this?</label>
+    <textarea id="why" maxlength="500" placeholder="Why are you saving this? (optional)"></textarea>
+    <div class="actions">
+      <p class="hint">Enter to save, Shift+Enter for a new line</p>
+      <button id="save" class="btn" type="submit">Save</button>
+    </div>
+    <p id="status" class="status" role="status"></p>
   </form>
-  <p id="status" class="status"></p>
+
+  <div id="done" class="done" role="status">
+    <p id="done-text">Saved.</p>
+    <a id="open-library" href="#" target="_blank" rel="noopener">Open your library</a>
+  </div>
+
   <script src="popup.js" type="module"></script>
 </body>
 </html>

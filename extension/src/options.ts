@@ -18,11 +18,11 @@ $<HTMLFormElement>("form").addEventListener("submit", async (e) => {
   // Ask for host permission on the app's origin only (granted from a user gesture).
   const granted = await chrome.permissions.request({ origins: [originPattern(url)] });
   if (!granted) {
-    statusEl.textContent = "Permission for the app URL is required.";
+    statusEl.textContent = "The extension needs permission to reach this address.";
     statusEl.className = "status err";
     return;
   }
   await setSettings({ baseUrl: url, token: token.value.trim() });
-  statusEl.textContent = "Saved.";
+  statusEl.textContent = "Connected. You can save pages now.";
   statusEl.className = "status ok";
 });

@@ -6,7 +6,7 @@ mkdirSync("dist", { recursive: true });
 cpSync("public", "dist", { recursive: true });
 
 const options = {
-  entryPoints: ["src/popup.ts", "src/options.ts"],
+  entryPoints: ["src/popup.ts", "src/options.ts", "src/background.ts"],
   bundle: true,
   format: "esm",
   target: "chrome120",

@@ -1,19 +1,35 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>unfold options</title>
+  <title>unfold extension settings</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="options">
-  <h1>unfold</h1>
-  <form id="form">
-    <label>App URL <input id="baseUrl" type="url" required placeholder="https://your-unfold.vercel.app" /></label>
-    <label>API token <input id="token" type="password" required placeholder="unf_…" /></label>
-    <p class="hint">Create a token in the web app under Settings → Chrome extension.</p>
-    <button type="submit">Save</button>
-  </form>
-  <p id="status" class="status"></p>
+  <main>
+    <h1>Connect to unfold</h1>
+    <p class="lede">Paste your unfold address and a token, and the extension can save pages to your library.</p>
+    <form id="form">
+      <label>Your unfold address
+        <input id="baseUrl" type="url" required placeholder="http://localhost:3005" />
+      </label>
+      <label>Token
+        <input id="token" type="password" required placeholder="unf_…" autocomplete="off" />
+      </label>
+      <p class="note">In unfold, open Settings, then Chrome extension, then Create token. Chrome will ask to let the extension talk to this address only.</p>
+      <div><button class="btn" type="submit">Save and connect</button></div>
+      <p id="status" class="status" role="status"></p>
+    </form>
+
+    <section class="tips">
+      <h2>Ways to save</h2>
+      <ul>
+        <li>Click the unfold icon, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> on Mac).</li>
+        <li>Right-click a page to save it, or a link to save where it points.</li>
+        <li>Highlight a passage, then right-click to save the page with that passage as your note.</li>
+      </ul>
+    </section>
+  </main>
   <script src="options.js" type="module"></script>
 </body>
 </html>
