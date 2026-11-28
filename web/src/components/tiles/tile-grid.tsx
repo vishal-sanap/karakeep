@@ -447,7 +447,7 @@ export function TileGrid({ items }: { items: TileItem[] }) {
   const searchButton = (
     <button
       onClick={() => setSearchOpen(true)}
-      className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md border border-[#e4e7ea]/10 bg-[#1b1f24] px-3 py-1.5 text-ui text-[#e4e7ea] hover:border-[#e4e7ea]/30"
+      className="absolute right-4 top-20 z-10 flex items-center gap-2 rounded-md border border-[#e4e7ea]/10 bg-[#1b1f24] px-3 py-1.5 text-ui text-[#e4e7ea] hover:border-[#e4e7ea]/30"
       aria-label="Search your library"
     >
       Search

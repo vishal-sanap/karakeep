@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
 import { searchDiscoveries } from "@/lib/search";
-import { SaveForm } from "@/components/save-form";
+import { exploreNudge } from "@/lib/rediscover";
+import { Capture } from "@/components/capture";
+import { LibrarySearch } from "@/components/library-search";
 import { DiscoveryCard } from "@/components/discovery-card";
 import { PendingRefresher } from "@/components/pending-refresher";
 
@@ -16,7 +18,7 @@ export default async function LibraryPage({
   const userId = await sessionUserId();
   if (!userId) redirect("/login");
   const { q, saved } = await searchParams;
-  const { items, degraded } = await searchDiscoveries(userId, q);
+  const [{ items, degraded }, nudge] = await Promise.all([searchDiscoveries(userId, q), q ? null : exploreNudge(userId)]);
   // Keep refreshing while metadata is pending, or a fresh save is still being processed.
   const recent = (d: Date) => Date.now() - new Date(d).getTime() < 3 * 60_000;
   const hasPending = items.some(
@@ -25,25 +27,20 @@ export default async function LibraryPage({
 
   return (
     <div className="space-y-8">
-      <SaveForm />
+      <Capture toolbar={<LibrarySearch q={q} />} />
 
-      <form action="/" role="search" className="flex items-center gap-3">
-        <label htmlFor="library-search" className="sr-only">
-          Search your library
-        </label>
-        <input
-          id="library-search"
-          name="q"
-          defaultValue={q}
-          placeholder="Search by what you remember about it"
-          className="field"
-        />
-        {q && (
-          <Link href="/" className="action shrink-0">
-            Clear
+      {nudge && (
+        <p className="rounded-2xl border border-rule bg-sheet px-4 py-3 text-ui">
+          <span className="text-pencil">{nudge.reason} </span>
+          <Link href={`/d/${nudge.id}`} className="font-serif font-semibold hover:underline">
+            {nudge.title ?? nudge.domain}
           </Link>
-        )}
-      </form>
+          <span className="text-pencil">. </span>
+          <Link href="/explore" className="link whitespace-nowrap">
+            More in Explore
+          </Link>
+        </p>
+      )}
 
       <div>
         {saved && !q && <p className="mb-3 text-ui text-pen">Saved.</p>}

@@ -19,7 +19,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <div className="space-y-10">
       <h1 className="page-title">Settings</h1>
 
-      <section className={section}>
+      <section id="extension" className={`${section} scroll-mt-24`}>
         <h2 className="section-title">Chrome extension</h2>
         <p className="lede">Create a token, then paste it and this site&apos;s address into the extension&apos;s options page.</p>
         <TokenManager
@@ -32,13 +32,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
       </section>
 
-      <section id="import" className={`${section} scroll-mt-4`}>
+      <section id="import" className={`${section} scroll-mt-24`}>
         <h2 className="section-title">Import links</h2>
         <p className="lede">Add many links at once. Links already in your library are skipped.</p>
         <BulkImport />
       </section>
 
-      <section className={section}>
+      <section id="data" className={`${section} scroll-mt-24`}>
         <h2 className="section-title">Your data</h2>
         <p className="lede">
           unfold stores each page&apos;s URL, title, a short summary, tags, your note and a numeric embedding. It never

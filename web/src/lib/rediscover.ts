@@ -60,3 +60,27 @@ export async function oldestInActiveThreads(userId: string, limit = 5) {
     order by t.id, d.saved_at asc
     limit ${limit}`;
 }
+
+/**
+ * One gentle reason to revisit something, for the top of the library:
+ * an older item related to this week's saves, else the oldest never-opened one.
+ */
+export async function exploreNudge(userId: string): Promise<{ id: string; title: string | null; domain: string | null; reason: string } | null> {
+  const [related] = await relatedToThisWeek(userId, 1);
+  if (related) {
+    return {
+      id: related.id,
+      title: related.title,
+      domain: related.domain,
+      reason: `Related to something you saved this week, from ${weeksAgo(related.saved_at)}:`,
+    };
+  }
+  const [old] = await unopened(userId, 14, 1);
+  if (old) return { id: old.id, title: old.title, domain: old.domain, reason: `You saved this ${weeksAgo(old.saved_at)} and haven't opened it yet:` };
+  return null;
+}
+
+function weeksAgo(d: Date | string) {
+  const w = Math.max(1, Math.round((Date.now() - new Date(d).getTime()) / (7 * 86_400_000)));
+  return w === 1 ? "a week ago" : `${w} weeks ago`;
+}

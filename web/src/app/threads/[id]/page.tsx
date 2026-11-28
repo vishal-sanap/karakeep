@@ -20,8 +20,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-8">
-      <Link href="/threads" className="action">
-        Back to threads
+      <Link href="/explore#threads" className="action">
+        Back to Explore
       </Link>
       <div className="space-y-1">
         <h1 className="page-title">{thread.name}</h1>

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { importLinksAction, type ImportResult } from "@/app/actions";
 import { MAX_IMPORT, parseLinks, type ParseResult } from "@/lib/bulk";
 
@@ -14,8 +14,8 @@ const FORMAT_LABEL: Record<ParseResult["format"], string> = {
  * .txt / .csv / bookmarks .html / unfold .json file. Parsed in the browser;
  * the server saves each link through the normal path.
  */
-export function BulkImport() {
-  const [text, setText] = useState("");
+export function BulkImport({ initialFile, initialText = "" }: { initialFile?: File | null; initialText?: string } = {}) {
+  const [text, setText] = useState(initialText);
   const [fileName, setFileName] = useState("");
   const [why, setWhy] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -35,6 +35,11 @@ export function BulkImport() {
     setText(await f.text());
     setResult(null);
   };
+
+  // A file dropped on the capture box arrives here pre-selected.
+  useEffect(() => {
+    if (initialFile) void onFile(initialFile);
+  }, [initialFile]);
 
   return (
     <div className="space-y-3">

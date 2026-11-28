@@ -15,8 +15,9 @@
   --stamp: #b4372f;   /* errors and destructive actions only */
 }
 
+/* Dark: follows the system unless the toggle chose light; or forced by the toggle. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --paper: #14171b;
     --sheet: #1b1f24;
@@ -26,6 +27,16 @@
     --pen: #93a8ff;
     --stamp: #f0857c;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #14171b;
+  --sheet: #1b1f24;
+  --ink: #e4e7ea;
+  --pencil: #9ba2a9;
+  --rule: #2a3037;
+  --pen: #93a8ff;
+  --stamp: #f0857c;
 }
 
 @theme inline {
@@ -60,9 +71,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-:focus-visible {
-  outline: 2px solid var(--pen);
-  outline-offset: 2px;
+/* In the base layer so `outline-none` on fields that show focus via their container wins. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--pen);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
