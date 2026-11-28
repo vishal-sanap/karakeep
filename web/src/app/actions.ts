@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/auth";
 import { capture, CaptureError, setWhyNote } from "@/lib/capture";
+import { MAX_IMPORT } from "@/lib/bulk";
 import { deleteAllData, deleteDiscovery, dismissRelation, getPair } from "@/lib/discoveries";
 import { z } from "zod";
 import { createApiToken, revokeApiToken } from "@/lib/tokens";
@@ -103,4 +104,40 @@ export async function rebuildThreadsAction(): Promise<{ ok: boolean }> {
     console.error("[threads] enqueue failed", err);
     return { ok: false };
   }
+}
+
+const importSchema = z
+  .array(z.object({ url: z.string().min(1).max(4096), why_note: z.string().max(500).nullish() }))
+  .max(MAX_IMPORT);
+
+export type ImportResult = { added: number; existing: number; invalid: number; error?: string };
+
+/**
+ * Bulk import: each link goes through the normal save path (normalise, dedupe
+ * per user, enqueue metadata + enrichment), 8 at a time. `sharedWhy` applies
+ * to links that don't bring their own note.
+ */
+export async function importLinksAction(entries: unknown, sharedWhy?: string): Promise<ImportResult> {
+  const userId = await requireUser();
+  const parsed = importSchema.safeParse(entries);
+  if (!parsed.success) return { added: 0, existing: 0, invalid: 0, error: `Send at most ${MAX_IMPORT} valid links at a time.` };
+  const why = sharedWhy?.trim().slice(0, 500) || null;
+  const result: ImportResult = { added: 0, existing: 0, invalid: 0 };
+  const queue = [...parsed.data];
+  const worker = async () => {
+    for (let e = queue.shift(); e; e = queue.shift()) {
+      try {
+        const d = await capture(userId, { url: e.url, why_note: e.why_note || why });
+        if (d.created) result.added++;
+        else result.existing++;
+      } catch (err) {
+        if (!(err instanceof CaptureError)) console.error("[import]", err);
+        result.invalid++;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 8 }, worker));
+  revalidatePath("/");
+  revalidatePath("/tiles");
+  return result;
 }

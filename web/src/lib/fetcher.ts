@@ -78,6 +78,28 @@ export type SafeResponse = {
 };
 
 export async function safeFetch(input: string | URL, accept = "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5"): Promise<SafeResponse> {
+  const { finalUrl, status, contentType, bytes } = await safeFetchBytes(input, accept);
+  const charset = /charset=([\w-]+)/i.exec(contentType)?.[1] ?? "utf-8";
+  let body: string;
+  try {
+    body = new TextDecoder(charset).decode(bytes);
+  } catch {
+    body = new TextDecoder("utf-8").decode(bytes);
+  }
+  return { finalUrl, status, contentType, body };
+}
+
+export type SafeBytesResponse = {
+  finalUrl: URL;
+  status: number;
+  contentType: string;
+  bytes: Buffer; // at most MAX_BYTES
+  /** The body was larger than MAX_BYTES (or declared so) and was cut off. */
+  truncated: boolean;
+};
+
+/** Same guarantees as safeFetch, returning raw bytes (e.g. for images). */
+export async function safeFetchBytes(input: string | URL, accept = "*/*"): Promise<SafeBytesResponse> {
   const deadline = AbortSignal.timeout(TIMEOUT_MS);
   let url = new URL(input.toString());
 
@@ -100,30 +122,28 @@ export async function safeFetch(input: string | URL, accept = "text/html,applica
     const declared = Number(res.headers.get("content-length") ?? 0);
     if (declared > MAX_BYTES * 4) {
       await res.body?.cancel();
-      return { finalUrl: url, status: res.status, contentType, body: "" };
+      return { finalUrl: url, status: res.status, contentType, bytes: Buffer.alloc(0), truncated: true };
     }
 
     const chunks: Uint8Array[] = [];
     let size = 0;
+    let truncated = false;
     if (res.body) {
       const reader = res.body.getReader();
-      while (size < MAX_BYTES) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         chunks.push(value);
         size += value.byteLength;
+        if (size > MAX_BYTES) {
+          truncated = true;
+          break;
+        }
       }
       await reader.cancel().catch(() => {});
     }
-    const buf = Buffer.concat(chunks).subarray(0, MAX_BYTES);
-    const charset = /charset=([\w-]+)/i.exec(contentType)?.[1] ?? "utf-8";
-    let body: string;
-    try {
-      body = new TextDecoder(charset).decode(buf);
-    } catch {
-      body = new TextDecoder("utf-8").decode(buf);
-    }
-    return { finalUrl: url, status: res.status, contentType, body };
+    const bytes = Buffer.concat(chunks).subarray(0, MAX_BYTES);
+    return { finalUrl: url, status: res.status, contentType, bytes, truncated };
   }
   throw new FetchBlockedError("Too many redirects");
 }

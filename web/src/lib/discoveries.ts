@@ -34,7 +34,9 @@ const D_COLUMNS = (db: postgres.Sql) => db`
  * - query -> correct item scored 0.61-0.77; off-topic queries topped out at 0.57.
  * - unrelated item pairs scored 0.45-0.55; a genuinely related pair 0.60.
  */
-const SEARCH_MAX_DISTANCE = 0.42; // vector-only hits need similarity >= 0.58
+const SEARCH_MAX_DISTANCE = 0.42; // the best vector hit needs similarity >= 0.58
+const SEARCH_WINDOW = 0.03; // others within 0.03 of the best are kept (e.g. "no investors" ~ "bootstrapped" scored 0.015 behind)
+const SEARCH_HARD_MAX_DISTANCE = 0.5; // never below similarity 0.50
 export const RELATED_MAX_DISTANCE = 0.38; // "related" (and thread linkage) needs similarity >= 0.62
 const RRF_K = 60;
 
@@ -90,13 +92,19 @@ export async function listDiscoveries(
     vec as (
       select id, row_number() over (order by dist) as r
       from (
-        select id, embedding <=> ${opts.queryEmbedding}::vector as dist
-        from discovery
-        where user_id = ${userId} and embedding is not null
-        order by dist
-        limit 50
+        select id, dist, min(dist) over () as best
+        from (
+          select id, embedding <=> ${opts.queryEmbedding}::vector as dist
+          from discovery
+          where user_id = ${userId} and embedding is not null
+          order by dist
+          limit 50
+        ) top
       ) nn
-      where dist <= ${SEARCH_MAX_DISTANCE}
+      -- The best match must clear the floor (so off-topic queries return
+      -- nothing); then keep anything close behind it, down to a hard floor.
+      where best <= ${SEARCH_MAX_DISTANCE}
+        and dist <= least(best + ${SEARCH_WINDOW}, ${SEARCH_HARD_MAX_DISTANCE})
     )
     select ${D_COLUMNS(db)}
     from discovery d
@@ -190,7 +198,7 @@ export async function deleteAllData(userId: string) {
 
 export async function exportAll(userId: string) {
   const db = sql();
-  return db`
+  return db<Discovery[]>`
     select ${COLUMNS(db)} from discovery where user_id = ${userId} order by saved_at`;
 }
 

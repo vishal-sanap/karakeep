@@ -23,7 +23,8 @@ const STOPWORDS = new Set(
   try tried put able sure maybe probably actually simply basically quite rather almost enough less least`.split(/\s+/),
 );
 
-const WORD = /[a-z][a-z0-9+#'-]*[a-z0-9+#]|[a-z]/g;
+// Unicode letters, so "Sönke" or "Zettelkästen" stay whole words.
+const WORD = /\p{L}[\p{L}\p{N}+#'-]*[\p{L}\p{N}+#]|\p{L}/gu;
 
 export function tokenize(text: string): string[] {
   return (text.toLowerCase().replace(/’/g, "'").replace(/'s\b/g, "").match(WORD) ?? []).filter(

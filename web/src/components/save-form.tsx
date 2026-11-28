@@ -34,6 +34,9 @@ export function SaveForm() {
         className="w-full rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-stone-400 focus:border-stone-300 dark:focus:border-stone-700"
       />
       {state.error && <p className="px-1 text-sm text-red-600">{state.error}</p>}
+      <a href="/settings#import" className="block px-1 text-xs text-stone-500 hover:underline">
+        Have a bunch of links? Import them all at once
+      </a>
     </form>
   );
 }

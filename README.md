@@ -2,7 +2,7 @@
 
 A personal library that captures what you find interesting, remembers *why*, and lets you find it again later.
 
-See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 2 (Threads).** Everything runs locally: no AI API keys.
+See [`docs/architecture.md`](docs/architecture.md) for the design. **Current state: Phase 3 (Tiles).** Everything runs locally: no AI API keys.
 
 ## Layout
 
@@ -41,6 +41,8 @@ Summaries, tags and embeddings are computed on your machine; nothing is sent to 
 - **Tags:** keyword extraction from title, description and page text, weighted against your library.
 - **Threads:** nightly average-linkage clustering of the embeddings (03:00 UTC; `THREADS_CRON` / `THREADS_TZ`), only when the library changed. A thread needs 3+ items; names come from the members' shared keywords. "Rebuild threads" on the Threads page runs it now.
 - **Rediscover:** never-opened items, older items related to this week's saves, and where active threads began.
+- **Tiles:** an endless, draggable WebGL grid of your library (OGL), with momentum, a speed-based lens warp and edge fades. Preview images come through `/api/tiles/img/[id]`, a same-origin proxy that only serves the signed-in user's own thumbnails via the SSRF-hardened fetcher (raster formats only, no SVG). Falls back to an HTML grid without WebGL; honours reduced motion. **Ctrl+F / ⌘F** on the tiles page opens search over blurred tiles; picking a result glides to that item's tile and pulses it.
+- **Bulk import / export:** Settings → Import links takes pasted text (any links in it), `.txt`, `.csv`, browser bookmark `.html` or an unfold `.json` export, parsed in the browser (up to 1,000 links per run, duplicates skipped). Export as JSON, CSV, browser bookmarks or a plain list via `/api/export?format=json|csv|html|txt`.
 
 Page text is fetched, used, and discarded; only the summary, tags and embedding are stored. The worker re-processes items saved before an embedding-model change.
 

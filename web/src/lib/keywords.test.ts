@@ -5,6 +5,9 @@ describe("tokenize", () => {
   it("drops stopwords, numbers, short words and possessives", () => {
     expect(tokenize("The Zettelkasten's 2 index cards and a system for ideas")).toEqual(["zettelkasten", "index", "cards", "system", "ideas"]);
   });
+  it("keeps accented and non-English words whole", () => {
+    expect(tokenize("Sönke Ahrens on Zettelkästen")).toEqual(["sönke", "ahrens", "zettelkästen"]);
+  });
 });
 
 describe("extractTags", () => {
