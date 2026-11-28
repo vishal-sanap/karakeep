@@ -4,7 +4,9 @@ import { Atkinson_Hyperlegible_Next, Literata } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/register-sw";
 import { NavLinks } from "@/components/nav-links";
-import { ThemeToggle, themeInitScript } from "@/components/theme-toggle";
+import { themeInitScript } from "@/components/theme-toggle";
+import { AccountMenu, SearchButton } from "@/components/header-actions";
+import { supabaseServer } from "@/lib/supabase/server";
 import { SiteFooter } from "@/components/site-footer";
 
 // Literata: a reading face (titles, summaries). Atkinson Hyperlegible Next: interface text.
@@ -25,7 +27,10 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { data } = await (await supabaseServer()).auth.getUser();
+  const email = data.user?.email ?? null;
+
   return (
     <html lang="en" className={`${literata.variable} ${atkinson.variable}`} suppressHydrationWarning>
       <head>
@@ -34,16 +39,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="flex min-h-dvh flex-col">
         {/* Floating glass bar: content scrolls underneath, blurred. */}
-        <header className="sticky top-3 z-40 mx-auto mt-3 w-full max-w-3xl px-3">
+        <header className="container-page sticky top-3 z-40 mt-3">
           <div className="flex items-center gap-2 rounded-2xl border border-rule/80 bg-paper/70 py-2 pl-3.5 pr-1.5 sm:gap-3 sm:pl-4 sm:pr-2 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.25)] backdrop-blur-xl backdrop-saturate-150">
             <Link href="/" className="shrink-0 font-serif text-heading font-semibold tracking-tight">
               unfold
             </Link>
-            <NavLinks />
-            <ThemeToggle />
+            {email && (
+              <>
+                <NavLinks />
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-rule" aria-hidden />
+                <SearchButton />
+                <AccountMenu email={email} />
+              </>
+            )}
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-8">{children}</main>
+        <main className="container-page flex-1 pb-16 pt-8">{children}</main>
         <SiteFooter />
         <RegisterSW />
       </body>

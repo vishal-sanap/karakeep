@@ -14,7 +14,11 @@ const FORMAT_LABEL: Record<ParseResult["format"], string> = {
  * .txt / .csv / bookmarks .html / unfold .json file. Parsed in the browser;
  * the server saves each link through the normal path.
  */
-export function BulkImport({ initialFile, initialText = "" }: { initialFile?: File | null; initialText?: string } = {}) {
+export function BulkImport({
+  initialFile,
+  initialText = "",
+  autoFocus = false,
+}: { initialFile?: File | null; initialText?: string; autoFocus?: boolean } = {}) {
   const [text, setText] = useState(initialText);
   const [fileName, setFileName] = useState("");
   const [why, setWhy] = useState("");
@@ -44,6 +48,7 @@ export function BulkImport({ initialFile, initialText = "" }: { initialFile?: Fi
   return (
     <div className="space-y-3">
       <textarea
+        autoFocus={autoFocus && !initialFile}
         value={text}
         onChange={(e) => {
           setText(e.target.value);

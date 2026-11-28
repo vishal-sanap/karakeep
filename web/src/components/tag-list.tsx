@@ -1,13 +1,14 @@
 import Link from "next/link";
 
-/** Tags as plain words; each searches the library for that tag. */
-export function TagList({ tags, className = "" }: { tags: string[]; className?: string }) {
+/** Tags as chips; each searches the library for that tag. */
+export function TagList({ tags, className = "", max }: { tags: string[]; className?: string; max?: number }) {
   if (!tags.length) return null;
+  const shown = max ? tags.slice(0, max) : tags;
   return (
-    <ul className={`flex flex-wrap gap-x-3 gap-y-1 text-meta ${className}`} aria-label="Tags">
-      {tags.map((t) => (
+    <ul className={`flex flex-wrap gap-1.5 ${className}`} aria-label="Tags">
+      {shown.map((t) => (
         <li key={t}>
-          <Link href={`/?q=${encodeURIComponent(t)}`} className="text-pencil underline-offset-2 hover:text-ink hover:underline">
+          <Link href={`/?q=${encodeURIComponent(t)}`} className="chip">
             {t}
           </Link>
         </li>

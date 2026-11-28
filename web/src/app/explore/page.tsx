@@ -27,7 +27,7 @@ export default async function ExplorePage() {
   const nothingToBringBack = !resurfaced.length && !threadStarts.length && !never.length;
 
   return (
-    <div className="space-y-12">
+    <div className="mx-auto max-w-3xl space-y-12">
       <div className="space-y-2">
         <h1 className="page-title">Explore</h1>
         <p className="lede">

@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Mesh, Program, Renderer, Texture } from "ogl";
 import { paintTile, setTileFonts, type TileItem } from "./paint";
 import { SearchOverlay } from "./search-overlay";
+import { useSearchHandler } from "../header-actions";
 
 const MAX_TEXTURES = 80;
 const FRICTION = 0.93; // per 60fps frame
@@ -72,6 +73,8 @@ export function TileGrid({ items }: { items: TileItem[] }) {
   useEffect(() => {
     if (/Mac|iPhone|iPad/.test(navigator.platform)) setShortcut("⌘F");
   }, []);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  useSearchHandler(openSearch);
   /** Set by the WebGL loop: glide to the nearest tile of an item. False if it isn't on the grid. */
   const flyToRef = useRef<((id: string) => boolean) | null>(null);
 

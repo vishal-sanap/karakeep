@@ -27,7 +27,7 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
   const kind = d.resource_type && d.resource_type !== "webpage" ? d.resource_type : null;
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-3xl space-y-10">
       <Link href="/" className="action">
         Back to library
       </Link>

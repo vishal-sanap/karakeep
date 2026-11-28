@@ -92,6 +92,18 @@ body {
   .btn-quiet {
     @apply rounded-md border border-rule px-3 py-1.5 text-ui text-ink hover:border-pencil disabled:opacity-40;
   }
+  /* Shared page container: header, main and footer line up and grow on wide screens. */
+  .container-page {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 xl:max-w-6xl 2xl:max-w-7xl;
+  }
+  /* Rounded companion buttons beside the capture box (Import, Search). */
+  .pill {
+    @apply inline-flex shrink-0 items-center gap-2 rounded-2xl border border-rule bg-sheet px-4 py-3 text-ui text-ink hover:border-pencil;
+  }
+  /* Tag chips. */
+  .chip {
+    @apply inline-block rounded-full bg-ink/[0.06] px-2.5 py-0.5 text-meta text-pencil hover:bg-ink/10 hover:text-ink;
+  }
   /* Inline text actions (edit, delete, related). */
   .action {
     @apply text-meta text-pencil underline-offset-2 hover:text-ink hover:underline;

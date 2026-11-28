@@ -7,18 +7,24 @@ import { Capture } from "@/components/capture";
 import { LibrarySearch } from "@/components/library-search";
 import { DiscoveryCard } from "@/components/discovery-card";
 import { PendingRefresher } from "@/components/pending-refresher";
+import { LibrarySidebar } from "@/components/library-sidebar";
+import { libraryCount } from "@/lib/sidebar";
 
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; saved?: string }>;
+  searchParams: Promise<{ q?: string; saved?: string; search?: string; import?: string }>;
 }) {
   const userId = await sessionUserId();
   if (!userId) redirect("/login");
-  const { q, saved } = await searchParams;
-  const [{ items, degraded }, nudge] = await Promise.all([searchDiscoveries(userId, q), q ? null : exploreNudge(userId)]);
+  const { q, saved, search, import: importParam } = await searchParams;
+  const [{ items, degraded }, nudge, total] = await Promise.all([
+    searchDiscoveries(userId, q),
+    q ? null : exploreNudge(userId),
+    libraryCount(userId),
+  ]);
   // Keep refreshing while metadata is pending, or a fresh save is still being processed.
   const recent = (d: Date) => Date.now() - new Date(d).getTime() < 3 * 60_000;
   const hasPending = items.some(
@@ -26,8 +32,13 @@ export default async function LibraryPage({
   );
 
   return (
-    <div className="space-y-8">
-      <Capture toolbar={<LibrarySearch q={q} />} />
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:gap-12 2xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:gap-16">
+    <div className="min-w-0 space-y-8">
+      <div className="flex items-baseline gap-3">
+        <h1 className="font-serif text-[2.5rem] font-semibold leading-none tracking-tight">Your library</h1>
+        <span className="text-ui text-pencil">{total} saved</span>
+      </div>
+      <Capture autoImport={importParam === "1"} toolbar={<LibrarySearch q={q} autoOpen={search === "1"} />} />
 
       {nudge && (
         <p className="rounded-2xl border border-rule bg-sheet px-4 py-3 text-ui">
@@ -65,6 +76,12 @@ export default async function LibraryPage({
       </div>
 
       {hasPending && <PendingRefresher />}
+    </div>
+    <aside className="hidden border-l border-rule pl-10 lg:block" aria-label="Your library at a glance">
+      <div className="sticky top-24">
+        <LibrarySidebar userId={userId} />
+      </div>
+    </aside>
     </div>
   );
 }

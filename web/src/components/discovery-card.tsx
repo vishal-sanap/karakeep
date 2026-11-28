@@ -5,6 +5,7 @@ import { deleteAction, updateWhyAction } from "@/app/actions";
 import type { Discovery } from "@/lib/discoveries";
 import { LocalDate } from "./local-date";
 import { TagList } from "./tag-list";
+import { Thumb } from "./thumb";
 
 type Props = {
   d: Omit<Discovery, "saved_at" | "last_opened_at" | "enriched_at"> & {
@@ -41,7 +42,15 @@ export function DiscoveryCard({ d, highlight, summarizing }: Props) {
     });
 
   return (
-    <li className={`group border-t border-rule py-5 ${highlight ? "bg-sheet" : ""} ${pending ? "opacity-50" : ""}`}>
+    <li
+      className={`group grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 border-t border-rule py-5 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:gap-x-6 ${
+        highlight ? "bg-sheet" : ""
+      } ${pending ? "opacity-50" : ""}`}
+    >
+      <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden className="block">
+        <Thumb id={d.id} hasImage={Boolean(d.thumbnail_url)} label={d.domain ?? title} />
+      </a>
+      <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-4">
         <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="font-serif text-entry font-semibold hover:underline">
           {title}
@@ -92,15 +101,15 @@ export function DiscoveryCard({ d, highlight, summarizing }: Props) {
           <button
             onClick={() => setEditing(true)}
             title="Edit why you saved this"
-            className="mt-3 block max-w-prose text-left font-serif text-ui italic leading-snug text-pen hover:underline"
+            className="mt-3 block max-w-[70ch] text-left font-serif text-ui italic leading-snug text-pen hover:underline"
           >
             {d.why_note}
           </button>
         )
       )}
 
-      {d.summary && <p className="mt-2 line-clamp-2 max-w-prose font-serif text-ui text-pencil">{d.summary}</p>}
-      <TagList tags={d.tags} className="mt-2" />
+      {d.summary && <p className="mt-2 line-clamp-2 max-w-[70ch] font-serif text-ui text-pencil">{d.summary}</p>}
+      <TagList tags={d.tags} max={4} className="mt-2.5" />
       <div className="mt-2 flex gap-4 sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
         <Link href={`/d/${d.id}`} className="action">
           Related
@@ -113,6 +122,7 @@ export function DiscoveryCard({ d, highlight, summarizing }: Props) {
         <button onClick={() => confirm("Delete this item?") && start(() => deleteAction(d.id))} className="action hover:text-stamp">
           Delete
         </button>
+      </div>
       </div>
     </li>
   );

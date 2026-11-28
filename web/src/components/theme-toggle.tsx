@@ -52,3 +52,27 @@ export function ThemeToggle() {
     </button>
   );
 }
+
+/** Dark mode as a labelled switch, for menus. */
+export function ThemeSwitch() {
+  const [dark, setDark] = useState<boolean | null>(null);
+  useEffect(() => setDark(resolved() === "dark"), []);
+  const flip = () => {
+    const next = resolved() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem(KEY, next);
+    } catch {
+      // private mode: still applies for this visit
+    }
+    setDark(next === "dark");
+  };
+  return (
+    <button role="menuitemcheckbox" aria-checked={Boolean(dark)} onClick={flip} className="flex w-full items-center justify-between gap-4 rounded-lg px-3 py-2 text-left text-ui hover:bg-ink/5">
+      Dark mode
+      <span aria-hidden className={`relative h-5 w-9 rounded-full transition-colors ${dark ? "bg-pen" : "bg-rule"}`}>
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-paper shadow transition-[left] ${dark ? "left-[1.125rem]" : "left-0.5"}`} />
+      </span>
+    </button>
+  );
+}

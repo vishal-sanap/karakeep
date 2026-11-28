@@ -16,7 +16,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const section = "space-y-3 border-t border-rule pt-6";
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-3xl space-y-10">
       <h1 className="page-title">Settings</h1>
 
       <section id="extension" className={`${section} scroll-mt-24`}>

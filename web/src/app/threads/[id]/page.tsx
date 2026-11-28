@@ -19,7 +19,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const also = members.filter((m) => !m.is_primary);
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8">
       <Link href="/explore#threads" className="action">
         Back to Explore
       </Link>

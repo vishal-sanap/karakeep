@@ -24,7 +24,7 @@ const BAD_LINK = "That isn't a link. Paste a web address, like https://example.c
  * optional "why" line appears for it. Paste several links and it offers to
  * import them all. A file dropped here opens the importer.
  */
-export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
+export function Capture({ toolbar, autoImport = false }: { toolbar?: React.ReactNode; autoImport?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,8 @@ export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
   const [noteDone, setNoteDone] = useState(false);
   const [multi, setMulti] = useState<ImportEntry[] | null>(null);
   const [imported, setImported] = useState<ImportResult | null>(null);
-  const [dialog, setDialog] = useState<{ file?: File | null; text?: string } | null>(null);
+  // Inline import panel (opens under the row, like search). `file`: dropped on the box.
+  const [importer, setImporter] = useState<{ file?: File | null } | null>(autoImport ? {} : null);
   const [dragging, setDragging] = useState(false);
   const [pending, start] = useTransition();
 
@@ -74,6 +75,7 @@ export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
 
   return (
     <section aria-label="Save a link" className="space-y-3">
+      <div className="flex flex-wrap items-stretch gap-2">
       <div
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
@@ -87,9 +89,9 @@ export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
           if (!file) return;
           e.preventDefault();
           setDragging(false);
-          setDialog({ file });
+          setImporter({ file });
         }}
-        className={`flex items-center gap-3 rounded-2xl border bg-sheet px-4 transition-colors ${
+        className={`flex min-w-[min(100%,18rem)] flex-1 items-center gap-3 rounded-2xl border bg-sheet pl-4 pr-1.5 transition-colors ${
           error ? "border-stamp" : dragging ? "border-pen border-dashed" : "border-rule focus-within:border-pen"
         }`}
       >
@@ -138,9 +140,28 @@ export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
           aria-describedby={error ? "capture-error" : undefined}
           className="min-w-0 flex-1 bg-transparent py-4 text-entry text-ink outline-none placeholder:text-pencil disabled:opacity-60"
         />
-        <span className="hidden shrink-0 text-meta text-pencil sm:block" aria-hidden>
-          {pending ? "Saving…" : value ? "Enter to save" : ""}
-        </span>
+        <span className="h-6 w-px shrink-0 bg-rule" aria-hidden />
+        <button
+          type="button"
+          onClick={() => save(value)}
+          disabled={pending || !value.trim()}
+          className="shrink-0 rounded-xl bg-ink/[0.06] px-4 py-2 text-ui font-semibold text-ink hover:bg-ink/10 disabled:text-pencil"
+        >
+          {pending ? "Saving…" : "Add"}
+        </button>
+      </div>
+      <button
+        onClick={() => setImporter((o) => (o ? null : {}))}
+        aria-expanded={Boolean(importer)}
+        aria-controls="import-panel"
+        className={`pill ${importer ? "border-pen text-pen" : ""}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+        </svg>
+        Import
+      </button>
+      {toolbar}
       </div>
 
       {error && (
@@ -209,48 +230,27 @@ export function Capture({ toolbar }: { toolbar?: React.ReactNode }) {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-      <button onClick={() => setDialog({})} className="btn-quiet inline-flex shrink-0 items-center gap-2">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
-        </svg>
-        Import a list or file
-      </button>
-      <div className="flex min-w-0 flex-1 justify-end">{toolbar}</div>
-      </div>
 
-      {dialog && <ImportDialog file={dialog.file} onClose={() => setDialog(null)} />}
-    </section>
-  );
-}
-
-function ImportDialog({ file, onClose }: { file?: File | null; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    d?.showModal();
-    return () => d?.close();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      onClick={(e) => e.target === ref.current && onClose()}
-      aria-label="Import links"
-      className="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl border border-rule bg-paper p-0 text-ink backdrop:bg-ink/30 backdrop:backdrop-blur-sm"
-    >
-      <div className="space-y-4 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="section-title">Import links</h2>
-            <p className="lede">Paste a list, or choose a file. Links already in your library are skipped.</p>
+      {importer && (
+        <div
+          id="import-panel"
+          role="region"
+          aria-label="Import links"
+          onKeyDown={(e) => e.key === "Escape" && setImporter(null)}
+          className="space-y-4 rounded-2xl border border-pen bg-sheet p-5"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-entry font-semibold">Import links</h2>
+              <p className="text-ui text-pencil">Paste a list, or choose a file. Links already in your library are skipped.</p>
+            </div>
+            <button onClick={() => setImporter(null)} className="action shrink-0">
+              Close
+            </button>
           </div>
-          <button onClick={onClose} aria-label="Close" className="action text-entry">
-            ✕
-          </button>
+          <BulkImport key={importer.file?.name ?? "paste"} initialFile={importer.file} autoFocus />
         </div>
-        <BulkImport initialFile={file} />
-      </div>
-    </dialog>
+      )}
+    </section>
   );
 }

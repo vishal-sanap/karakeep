@@ -8,14 +8,14 @@ export function SiteFooter() {
   const path = usePathname();
   if (path.startsWith("/tiles") || path.startsWith("/login")) return null;
   return (
-    <footer className="mx-auto w-full max-w-3xl px-4 pb-10">
+    <footer className="container-page pb-10">
       <div className="flex flex-col gap-4 border-t border-rule pt-6 text-meta text-pencil sm:flex-row sm:items-start sm:justify-between">
         <p className="max-w-xs">
           <span className="font-serif text-ui font-semibold text-ink">unfold</span> keeps what you find and why. Pages are
           read on this server; nothing is sent to an AI service.
         </p>
         <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
-          <Link href="/settings#import" className="hover:text-ink hover:underline">
+          <Link href="/?import=1" className="hover:text-ink hover:underline">
             Import links
           </Link>
           <Link href="/settings#data" className="hover:text-ink hover:underline">
