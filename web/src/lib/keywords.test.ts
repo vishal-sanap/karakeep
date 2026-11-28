@@ -96,8 +96,8 @@ describe("nameCluster", () => {
       { title: "Startup funding", tags: ["startups", "fundraising"] },
     ];
     const name = nameCluster(notes, [notes, startups]);
-    expect(name.startsWith("Note-Taking")).toBe(true); // shared by all three
-    expect(name.split(" · ")).toHaveLength(3);
+    expect(name.startsWith("Note-taking")).toBe(true); // shared by all three
+    expect(name.split(", ")).toHaveLength(3);
     expect(name).not.toMatch(/Startup/);
     expect(nameCluster(startups, [notes, startups])).toMatch(/^Startup/);
   });

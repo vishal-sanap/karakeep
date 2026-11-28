@@ -24,60 +24,62 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
   ]);
   if (!d) notFound();
 
-  return (
-    <div className="space-y-6">
-      <Link href="/" className="text-sm text-stone-500 hover:underline">← Library</Link>
+  const kind = d.resource_type && d.resource_type !== "webpage" ? d.resource_type : null;
 
-      <article className="space-y-3 rounded-xl border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-stone-900">
-        <div className="flex gap-3">
+  return (
+    <div className="space-y-10">
+      <Link href="/" className="action">
+        Back to library
+      </Link>
+
+      <article className="space-y-4">
+        <h1 className="page-title">
+          <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            {d.title || d.original_url}
+          </a>
+        </h1>
+        <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-pencil">
           {d.favicon_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={d.favicon_url} alt="" width={20} height={20} className="mt-1 h-5 w-5 shrink-0 rounded-sm" referrerPolicy="no-referrer" />
+            <img src={d.favicon_url} alt="" width={14} height={14} className="h-3.5 w-3.5 rounded-sm" referrerPolicy="no-referrer" />
           )}
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold leading-snug">
-              <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                {d.title || d.original_url}
-              </a>
-            </h1>
-            <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-stone-500">
-              <span>{d.domain}</span>
-              {d.resource_type && d.resource_type !== "webpage" && <span>· {d.resource_type}</span>}
-              <span>· saved <LocalDate value={d.saved_at} /></span>
-              {d.last_opened_at && <span>· opened <LocalDate value={d.last_opened_at} /></span>}
-            </div>
-          </div>
-        </div>
+          <span>
+            {d.domain}
+            {kind && `, ${kind}`}. Saved <LocalDate value={d.saved_at} />
+            {d.last_opened_at && (
+              <>
+                , last opened <LocalDate value={d.last_opened_at} />
+              </>
+            )}
+            .
+          </span>
+        </p>
 
-        {d.summary && <p className="text-sm text-stone-700 dark:text-stone-300">{d.summary}</p>}
-        {d.why_note && <p className="border-l-2 border-amber-400 pl-2 text-sm italic">{d.why_note}</p>}
+        {d.why_note && <p className="max-w-prose font-serif text-entry italic text-pen">{d.why_note}</p>}
+        {d.summary && <p className="max-w-prose font-serif text-ui leading-relaxed">{d.summary}</p>}
         <TagList tags={d.tags} />
         {threads.length > 0 && (
-          <p className="text-sm text-stone-500">
-            In {threads.length === 1 ? "thread" : "threads"}{" "}
+          <p className="text-ui text-pencil">
+            Part of{" "}
             {threads.map((t, i) => (
               <span key={t.id}>
-                {i > 0 && ", "}
-                <Link href={`/threads/${t.id}`} className="font-medium text-stone-700 underline underline-offset-2 dark:text-stone-300">
+                {i > 0 && (i === threads.length - 1 ? " and " : ", ")}
+                <Link href={`/threads/${t.id}`} className="link">
                   {t.name}
                 </Link>
               </span>
             ))}
+            .
           </p>
         )}
 
-        <a
-          href={`/open/${d.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-sm font-medium text-stone-900 underline underline-offset-2 dark:text-stone-100"
-        >
-          Open original ↗
+        <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="btn inline-block">
+          Open original
         </a>
       </article>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-stone-500">Related in your library</h2>
+        <h2 className="section-title">Related in your library</h2>
         {related.length > 0 ? (
           <RelatedList
             sourceId={d.id}
@@ -92,8 +94,8 @@ export default async function DiscoveryPage({ params }: { params: Promise<{ id: 
             }))}
           />
         ) : (
-          <p className="text-sm text-stone-500">
-            {d.enriched_at ? "Nothing closely related yet. This fills in as your library grows." : "Still processing this item…"}
+          <p className="text-ui text-pencil">
+            {d.enriched_at ? "Nothing closely related yet. This fills in as your library grows." : "Still reading this page. Check back in a minute."}
           </p>
         )}
       </section>

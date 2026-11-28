@@ -161,7 +161,7 @@ export function sharedTerms(
 
 /**
  * Thread name from its members: terms frequent inside the thread (c-TF-IDF),
- * discounted by how common they are across all threads. "Zettelkasten · Notes · Memory".
+ * discounted by how common they are across all threads. "Zettelkasten, notes, memory".
  */
 export function nameCluster(
   members: { title: string | null; tags: string[] }[],
@@ -194,5 +194,7 @@ export function nameCluster(
     picked.push(t);
   }
   if (!picked.length) return members[0]?.title?.slice(0, 40) ?? "Untitled thread";
-  return picked.map((t) => t.replace(/\b\w/g, (c) => c.toUpperCase())).join(" · ");
+  // Sentence case, comma-separated: "Notes, flashcards, memory".
+  const name = picked.join(", ");
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }

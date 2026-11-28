@@ -1,3 +1,97 @@
 @import "tailwindcss";
 
-:root { color-scheme: light dark; }
+/*
+ * unfold: a commonplace book. Paper, ink, pencil; your why-notes in blue pen.
+ * Colours are semantic tokens so light and dark stay in step.
+ */
+:root {
+  color-scheme: light;
+  --paper: #f5f6f3;   /* cool off-white page */
+  --sheet: #fbfcfa;   /* inputs and raised surfaces */
+  --ink: #1a1e23;     /* blue-black text */
+  --pencil: #646b72;  /* secondary text */
+  --rule: #dcdfda;    /* hairlines */
+  --pen: #2b47b5;     /* blue ballpoint: why-notes, links, focus */
+  --stamp: #b4372f;   /* errors and destructive actions only */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #14171b;
+    --sheet: #1b1f24;
+    --ink: #e4e7ea;
+    --pencil: #9ba2a9;
+    --rule: #2a3037;
+    --pen: #93a8ff;
+    --stamp: #f0857c;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-ink: var(--ink);
+  --color-pencil: var(--pencil);
+  --color-rule: var(--rule);
+  --color-pen: var(--pen);
+  --color-stamp: var(--stamp);
+
+  --font-serif: var(--font-literata), Georgia, serif;
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
+
+  /* Type scale: 13 / 15 / 16 / 19 / 23 / 28 */
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.35;
+  --text-ui: 0.9375rem;
+  --text-ui--line-height: 1.45;
+  --text-entry: 1.1875rem;
+  --text-entry--line-height: 1.3;
+  --text-heading: 1.4375rem;
+  --text-heading--line-height: 1.25;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.2;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* Text field: quiet until focused. */
+  .field {
+    @apply w-full rounded-md border border-rule bg-sheet px-3 py-2 text-ui text-ink outline-none placeholder:text-pencil focus:border-pen;
+  }
+  /* The one filled button per form. */
+  .btn {
+    @apply rounded-md bg-ink px-4 py-2 text-ui font-semibold text-paper hover:opacity-90 disabled:opacity-40;
+  }
+  /* Secondary actions. */
+  .btn-quiet {
+    @apply rounded-md border border-rule px-3 py-1.5 text-ui text-ink hover:border-pencil disabled:opacity-40;
+  }
+  /* Inline text actions (edit, delete, related). */
+  .action {
+    @apply text-meta text-pencil underline-offset-2 hover:text-ink hover:underline;
+  }
+  .link {
+    @apply text-pen underline decoration-1 underline-offset-2 hover:decoration-2;
+  }
+  .page-title {
+    @apply font-serif text-title font-semibold tracking-tight;
+  }
+  .section-title {
+    @apply font-serif text-heading font-semibold;
+  }
+  .lede {
+    @apply max-w-prose text-ui text-pencil;
+  }
+}

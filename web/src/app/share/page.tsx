@@ -17,8 +17,8 @@ export default async function SharePage({
 
   return (
     <div className="mx-auto mt-8 max-w-md space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight">Save to unfold</h1>
-      {title && <p className="text-sm text-stone-500">{title}</p>}
+      <h1 className="page-title">Save to unfold</h1>
+      {title && <p className="font-serif text-ui text-pencil">{title}</p>}
       <ShareForm url={found ?? ""} />
     </div>
   );

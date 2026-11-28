@@ -17,51 +17,55 @@ export default async function LibraryPage({
   if (!userId) redirect("/login");
   const { q, saved } = await searchParams;
   const { items, degraded } = await searchDiscoveries(userId, q);
-  // Keep refreshing while metadata is pending, or a fresh save awaits its AI summary.
+  // Keep refreshing while metadata is pending, or a fresh save is still being processed.
   const recent = (d: Date) => Date.now() - new Date(d).getTime() < 3 * 60_000;
   const hasPending = items.some(
     (i) => i.status === "pending" || (i.status === "ready" && !i.enriched_at && recent(i.saved_at)),
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <SaveForm />
 
-      <form action="/" className="flex gap-2">
+      <form action="/" role="search" className="flex items-center gap-3">
+        <label htmlFor="library-search" className="sr-only">
+          Search your library
+        </label>
         <input
+          id="library-search"
           name="q"
           defaultValue={q}
-          placeholder="Search your library… (try a vague description)"
-          className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-500 dark:border-stone-700 dark:bg-stone-900"
+          placeholder="Search by what you remember about it"
+          className="field"
         />
         {q && (
-          <Link href="/" className="self-center text-sm text-stone-500 hover:underline">Clear</Link>
+          <Link href="/" className="action shrink-0">
+            Clear
+          </Link>
         )}
       </form>
 
-      {saved && !q && <p className="text-sm text-emerald-600">Saved.</p>}
-      {degraded && (
-        <p className="text-sm text-amber-600">
-          Smart search hit an error, so these are exact word matches only.
-        </p>
-      )}
+      <div>
+        {saved && !q && <p className="mb-3 text-ui text-pen">Saved.</p>}
+        {degraded && <p className="mb-3 text-ui text-pencil">Showing exact word matches only; the similarity search failed.</p>}
+        {q && items.length > 0 && (
+          <p className="mb-3 text-meta text-pencil">
+            {items.length} {items.length === 1 ? "match" : "matches"} for &ldquo;{q}&rdquo;
+          </p>
+        )}
 
-      {items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-stone-500">
-          {q ? "Nothing matched. Try different words." : "Nothing saved yet. Paste a link above, or use the extension."}
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((d) => (
-            <DiscoveryCard
-              key={d.id}
-              d={JSON.parse(JSON.stringify(d))}
-              highlight={d.id === saved}
-              summarizing={recent(d.saved_at)}
-            />
-          ))}
-        </ul>
-      )}
+        {items.length === 0 ? (
+          <p className="border-t border-rule py-10 text-ui text-pencil">
+            {q ? "Nothing matched. Try describing it differently." : "Nothing saved yet. Paste a link above to start your library."}
+          </p>
+        ) : (
+          <ul className="border-b border-rule">
+            {items.map((d) => (
+              <DiscoveryCard key={d.id} d={JSON.parse(JSON.stringify(d))} highlight={d.id === saved} summarizing={recent(d.saved_at)} />
+            ))}
+          </ul>
+        )}
+      </div>
 
       {hasPending && <PendingRefresher />}
     </div>

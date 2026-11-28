@@ -14,25 +14,18 @@ type Item = {
 /** Compact list row: title opens the detail page, with an optional context note. */
 export function ItemRow({ item, note }: { item: Item; note?: React.ReactNode }) {
   return (
-    <li className="rounded-lg border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900">
-      <div className="flex gap-2">
-        {item.favicon_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.favicon_url} alt="" width={16} height={16} className="mt-0.5 h-4 w-4 shrink-0 rounded-sm" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="mt-0.5 h-4 w-4 shrink-0 rounded-sm bg-stone-200 dark:bg-stone-700" />
-        )}
-        <div className="min-w-0 flex-1">
-          <Link href={`/d/${item.id}`} className="text-sm font-medium hover:underline">
-            {item.title || item.original_url}
-          </Link>
-          <div className="text-xs text-stone-500">
-            {item.domain} · saved <LocalDate value={item.saved_at} />
-          </div>
-          {item.summary && <p className="mt-1 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">{item.summary}</p>}
-          {note && <p className="mt-1 text-xs text-stone-500">{note}</p>}
-        </div>
+    <li className="border-t border-rule py-4">
+      <div className="flex items-baseline justify-between gap-4">
+        <Link href={`/d/${item.id}`} className="font-serif text-entry font-semibold hover:underline">
+          {item.title || item.original_url}
+        </Link>
+        <span className="shrink-0 text-meta text-pencil">
+          <LocalDate value={item.saved_at} />
+        </span>
       </div>
+      <p className="mt-0.5 text-meta text-pencil">{item.domain}</p>
+      {item.summary && <p className="mt-2 line-clamp-2 max-w-prose font-serif text-ui text-pencil">{item.summary}</p>}
+      {note && <p className="mt-2 text-meta text-pencil">{note}</p>}
     </li>
   );
 }

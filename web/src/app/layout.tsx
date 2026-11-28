@@ -1,7 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Atkinson_Hyperlegible_Next, Literata } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/register-sw";
+import { NavLinks } from "@/components/nav-links";
+
+// Literata: a reading face (titles, summaries). Atkinson Hyperlegible Next: interface text.
+const literata = Literata({ subsets: ["latin"], style: ["normal", "italic"], variable: "--font-literata", display: "swap" });
+// Next has no fallback metrics for this newer family, so skip the size-adjusted fallback.
+const atkinson = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-atkinson", display: "swap", adjustFontFallback: false });
 
 export const metadata: Metadata = {
   title: "unfold",
@@ -11,26 +18,22 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafaf9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f6f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#14171b" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh bg-stone-50 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100">
-        <header className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4">
-          <Link href="/" className="text-lg font-semibold tracking-tight">unfold</Link>
-          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-500 sm:gap-x-4">
-            <Link href="/" className="hover:text-stone-900 dark:hover:text-stone-100">Library</Link>
-            <Link href="/threads" className="hover:text-stone-900 dark:hover:text-stone-100">Threads</Link>
-            <Link href="/rediscover" className="hover:text-stone-900 dark:hover:text-stone-100">Rediscover</Link>
-            <Link href="/tiles" className="hover:text-stone-900 dark:hover:text-stone-100">Tiles</Link>
-            <Link href="/settings" className="hover:text-stone-900 dark:hover:text-stone-100">Settings</Link>
-          </nav>
+    <html lang="en" className={`${literata.variable} ${atkinson.variable}`}>
+      <body className="min-h-dvh">
+        <header className="mx-auto flex max-w-3xl flex-wrap items-baseline justify-between gap-x-8 gap-y-2 px-4 pt-6 pb-5">
+          <Link href="/" className="font-serif text-heading font-semibold tracking-tight">
+            unfold
+          </Link>
+          <NavLinks />
         </header>
-        <main className="mx-auto max-w-3xl px-4 pb-16">{children}</main>
+        <main className="mx-auto max-w-3xl px-4 pb-20">{children}</main>
         <RegisterSW />
       </body>
     </html>

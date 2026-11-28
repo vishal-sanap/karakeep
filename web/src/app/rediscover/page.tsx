@@ -17,15 +17,15 @@ export default async function RediscoverPage() {
   const empty = !never.length && !resurfaced.length && !threadOld.length;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Rediscover</h1>
-        <p className="text-sm text-stone-500">Things you saved and may have forgotten.</p>
+    <div className="space-y-10">
+      <div className="space-y-1">
+        <h1 className="page-title">Rediscover</h1>
+        <p className="lede">Things you saved and may have forgotten.</p>
       </div>
 
       {empty && (
-        <p className="py-12 text-center text-sm text-stone-500">
-          Nothing to resurface yet. This fills in as your library ages: items show up here after a couple of weeks.
+        <p className="border-t border-rule py-10 text-ui text-pencil">
+          Nothing to bring back yet. Items appear here once they&apos;re a couple of weeks old.
         </p>
       )}
 
@@ -37,7 +37,10 @@ export default async function RediscoverPage() {
               item={d}
               note={
                 <>
-                  Close to <Link href={`/d/${d.because_id}`} className="underline">{d.because_title ?? "a recent save"}</Link>
+                  Close to{" "}
+                  <Link href={`/d/${d.because_id}`} className="link">
+                    {d.because_title ?? "something you saved this week"}
+                  </Link>
                 </>
               }
             />
@@ -53,7 +56,10 @@ export default async function RediscoverPage() {
               item={d}
               note={
                 <>
-                  Oldest in <Link href={`/threads/${d.thread_id}`} className="underline">{d.thread_name}</Link>
+                  First item in{" "}
+                  <Link href={`/threads/${d.thread_id}`} className="link">
+                    {d.thread_name}
+                  </Link>
                 </>
               }
             />
@@ -74,9 +80,9 @@ export default async function RediscoverPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-medium text-stone-500">{title}</h2>
-      <ul className="space-y-2">{children}</ul>
+    <section className="space-y-3">
+      <h2 className="section-title">{title}</h2>
+      <ul className="border-b border-rule">{children}</ul>
     </section>
   );
 }

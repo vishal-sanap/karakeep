@@ -11,31 +11,29 @@ export function SaveForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={action} className="space-y-2 rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900">
+    <form ref={formRef} action={action} className="space-y-2">
+      <label htmlFor="save-url" className="sr-only">
+        Link to save
+      </label>
       <div className="flex gap-2">
-        <input
-          name="url"
-          type="url"
-          required
-          placeholder="Paste a link"
-          className="w-full rounded-lg border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-500 dark:border-stone-700"
-        />
-        <button
-          disabled={pending}
-          className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
-        >
+        <input id="save-url" name="url" type="url" required placeholder="Paste a link to save" className="field" />
+        <button disabled={pending} className="btn shrink-0">
           {pending ? "Saving…" : "Save"}
         </button>
       </div>
+      <label htmlFor="save-why" className="sr-only">
+        Why you&apos;re saving it
+      </label>
       <input
+        id="save-why"
         name="why_note"
         maxLength={500}
-        placeholder="Why? (optional, one line)"
-        className="w-full rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-stone-400 focus:border-stone-300 dark:focus:border-stone-700"
+        placeholder="Why are you saving it? (optional)"
+        className="field font-serif italic text-pen placeholder:font-sans placeholder:not-italic"
       />
-      {state.error && <p className="px-1 text-sm text-red-600">{state.error}</p>}
-      <a href="/settings#import" className="block px-1 text-xs text-stone-500 hover:underline">
-        Have a bunch of links? Import them all at once
+      {state.error && <p className="text-ui text-stamp">{state.error}</p>}
+      <a href="/settings#import" className="action inline-block">
+        Import many links at once
       </a>
     </form>
   );

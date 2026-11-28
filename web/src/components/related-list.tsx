@@ -10,13 +10,13 @@ type Item = {
   domain: string | null;
   favicon_url: string | null;
   similarity: number;
-  /** Tags/title words both items share: a plain, LLM-free hint at the link. */
+  /** Tags/title words both items share: a plain hint at the link. */
   shared: string[];
 };
 
 export function RelatedList({ sourceId, items }: { sourceId: string; items: Item[] }) {
   return (
-    <ul className="space-y-2">
+    <ul className="border-b border-rule">
       {items.map((it) => (
         <RelatedRow key={it.id} sourceId={sourceId} item={it} />
       ))}
@@ -30,38 +30,28 @@ function RelatedRow({ sourceId, item }: { sourceId: string; item: Item }) {
   if (hidden) return null;
 
   return (
-    <li className={`rounded-lg border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900 ${pending ? "opacity-70" : ""}`}>
-      <div className="flex gap-2">
-        {item.favicon_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.favicon_url} alt="" width={16} height={16} className="mt-0.5 h-4 w-4 shrink-0 rounded-sm" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="mt-0.5 h-4 w-4 shrink-0 rounded-sm bg-stone-200 dark:bg-stone-700" />
-        )}
-        <div className="min-w-0 flex-1">
-          <Link href={`/d/${item.id}`} className="text-sm font-medium hover:underline">
-            {item.title || item.original_url}
-          </Link>
-          <div className="text-xs text-stone-500">{item.domain}</div>
-          {item.shared.length > 0 && (
-            <p className="mt-1.5 text-sm text-stone-600 dark:text-stone-400">Both mention: {item.shared.join(", ")}</p>
-          )}
-          <div className="mt-1.5 text-xs text-stone-500">
-            <button
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  await dismissRelationAction(sourceId, item.id);
-                  setHidden(true);
-                })
-              }
-              className="hover:text-red-600"
-            >
-              Not related
-            </button>
-          </div>
-        </div>
+    <li className={`group flex items-baseline justify-between gap-4 border-t border-rule py-3 ${pending ? "opacity-50" : ""}`}>
+      <div className="min-w-0">
+        <Link href={`/d/${item.id}`} className="font-serif text-ui font-semibold hover:underline">
+          {item.title || item.original_url}
+        </Link>
+        <p className="text-meta text-pencil">
+          {item.domain}
+          {item.shared.length > 0 && <>. Both mention {item.shared.join(", ")}</>}
+        </p>
       </div>
+      <button
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            await dismissRelationAction(sourceId, item.id);
+            setHidden(true);
+          })
+        }
+        className="action shrink-0 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+      >
+        Not related
+      </button>
     </li>
   );
 }

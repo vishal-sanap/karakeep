@@ -19,21 +19,23 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const also = members.filter((m) => !m.is_primary);
 
   return (
-    <div className="space-y-6">
-      <Link href="/threads" className="text-sm text-stone-500 hover:underline">← Threads</Link>
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{thread.name}</h1>
-        <p className="text-sm text-stone-500">{thread.size} items, newest first</p>
+    <div className="space-y-8">
+      <Link href="/threads" className="action">
+        Back to threads
+      </Link>
+      <div className="space-y-1">
+        <h1 className="page-title">{thread.name}</h1>
+        <p className="lede">{thread.size} items, newest first</p>
       </div>
-      <ul className="space-y-2">
+      <ul className="border-b border-rule">
         {primary.map((m) => (
           <ItemRow key={m.id} item={m} />
         ))}
       </ul>
       {also.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium text-stone-500">Also close to this thread</h2>
-          <ul className="space-y-2">
+        <section className="space-y-3">
+          <h2 className="section-title">Also close to this thread</h2>
+          <ul className="border-b border-rule">
             {also.map((m) => (
               <ItemRow key={m.id} item={m} />
             ))}

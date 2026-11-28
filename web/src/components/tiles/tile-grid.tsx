@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Mesh, Program, Renderer, Texture } from "ogl";
-import { paintTile, type TileItem } from "./paint";
+import { paintTile, setTileFonts, type TileItem } from "./paint";
 import { SearchOverlay } from "./search-overlay";
 
 const MAX_TEXTURES = 80;
@@ -46,7 +46,7 @@ void main() {
   c.rgb += uHover * 0.06;
   // fade into the background toward the top and bottom edges
   float edge = smoothstep(1.0, 0.7, abs(vScreen.y));
-  vec3 bg = vec3(0.043, 0.039, 0.035);
+  vec3 bg = vec3(0.078, 0.090, 0.106); // #14171b
   c.rgb = mix(bg, c.rgb, mix(0.25, 1.0, edge) * uAlpha);
   gl_FragColor = vec4(c.rgb, 1.0);
 }`;
@@ -68,6 +68,10 @@ export function TileGrid({ items }: { items: TileItem[] }) {
   const [fallback, setFallback] = useState(false);
   const [hoverTitle, setHoverTitle] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcut, setShortcut] = useState("Ctrl F");
+  useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) setShortcut("⌘F");
+  }, []);
   /** Set by the WebGL loop: glide to the nearest tile of an item. False if it isn't on the grid. */
   const flyToRef = useRef<((id: string) => boolean) | null>(null);
 
@@ -98,6 +102,12 @@ export function TileGrid({ items }: { items: TileItem[] }) {
 
     (async () => {
       const ogl = await import("ogl");
+      // Paint tiles in the site's own fonts (hashed next/font family names), once loaded.
+      const css = getComputedStyle(document.documentElement);
+      const serif = css.getPropertyValue("--font-literata").trim();
+      const sans = css.getPropertyValue("--font-atkinson").trim();
+      setTileFonts(serif, sans);
+      await Promise.all([document.fonts.load(`600 25px ${serif}`), document.fonts.load(`16px ${sans}`)]).catch(() => {});
       if (disposed) return;
       let renderer: Renderer;
       try {
@@ -107,7 +117,7 @@ export function TileGrid({ items }: { items: TileItem[] }) {
         return;
       }
       const gl = renderer.gl;
-      gl.clearColor(0.043, 0.039, 0.035, 1);
+      gl.clearColor(0.078, 0.09, 0.106, 1);
       const canvas = gl.canvas as HTMLCanvasElement;
       canvas.style.display = "block";
       canvas.style.touchAction = "none";
@@ -437,11 +447,11 @@ export function TileGrid({ items }: { items: TileItem[] }) {
   const searchButton = (
     <button
       onClick={() => setSearchOpen(true)}
-      className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/15 bg-black/60 px-3 py-1.5 text-xs text-stone-200 backdrop-blur hover:bg-black/80"
+      className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md border border-[#e4e7ea]/10 bg-[#1b1f24] px-3 py-1.5 text-ui text-[#e4e7ea] hover:border-[#e4e7ea]/30"
       aria-label="Search your library"
     >
       Search
-      <kbd className="hidden rounded border border-white/20 px-1 text-[10px] text-stone-400 sm:inline">Ctrl F</kbd>
+      <kbd className="hidden font-sans text-meta text-[#9ba2a9] sm:inline">{shortcut}</kbd>
     </button>
   );
 
@@ -460,7 +470,7 @@ export function TileGrid({ items }: { items: TileItem[] }) {
       {searchButton}
       {search}
       {hoverTitle && (
-        <div className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80%] -translate-x-1/2 truncate rounded-full bg-black/70 px-3 py-1 text-xs text-stone-100">
+        <div className="pointer-events-none absolute bottom-4 left-1/2 max-w-[80%] -translate-x-1/2 truncate rounded-md bg-[#1b1f24] px-3 py-1.5 font-serif text-ui text-[#e4e7ea]">
           {hoverTitle}
         </div>
       )}
@@ -481,18 +491,18 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 /** Plain HTML grid when WebGL isn't available. */
 function FallbackGrid({ items }: { items: TileItem[] }) {
   return (
-    <ul className="grid h-full grid-cols-2 content-start gap-px overflow-auto bg-stone-800 sm:grid-cols-4">
+    <ul className="grid h-full grid-cols-2 content-start gap-px overflow-auto bg-[#2a3037] sm:grid-cols-4">
       {items.map((it) => (
-        <li key={it.id} className="aspect-square bg-[#0b0a09]">
-          <Link href={`/d/${it.id}`} className="flex h-full flex-col justify-between p-3 text-stone-100">
-            <span className="text-xs font-semibold">{it.domain}</span>
+        <li key={it.id} className="aspect-square bg-[#14171b]">
+          <Link href={`/d/${it.id}`} className="flex h-full flex-col justify-between p-3 text-[#e4e7ea]">
+            <span className="text-meta text-[#9ba2a9]">{it.domain}</span>
             {it.hasImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`/api/tiles/img/${it.id}`} alt="" className="mx-auto max-h-[55%] max-w-[70%] object-contain" />
             ) : (
-              <span className="text-lg font-semibold leading-tight">{it.title}</span>
+              <span className="font-serif text-entry font-semibold">{it.title}</span>
             )}
-            <span className="font-mono text-[10px] text-stone-400">{it.year}</span>
+            <span className="text-meta text-[#9ba2a9]">{it.year}</span>
           </Link>
         </li>
       ))}

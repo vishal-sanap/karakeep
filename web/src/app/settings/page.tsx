@@ -13,17 +13,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const tokens = await listApiTokens(userId);
   const { deleted } = await searchParams;
 
-  const section = "space-y-3 rounded-xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900";
+  const section = "space-y-3 border-t border-rule pt-6";
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
+    <div className="space-y-10">
+      <h1 className="page-title">Settings</h1>
 
       <section className={section}>
-        <h2 className="font-medium">Chrome extension</h2>
-        <p className="text-sm text-stone-500">
-          Create a token, then paste it with this site&apos;s URL into the extension&apos;s options page.
-        </p>
+        <h2 className="section-title">Chrome extension</h2>
+        <p className="lede">Create a token, then paste it and this site&apos;s address into the extension&apos;s options page.</p>
         <TokenManager
           tokens={tokens.map((t) => ({
             id: t.id,
@@ -35,38 +33,37 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section id="import" className={`${section} scroll-mt-4`}>
-        <h2 className="font-medium">Import links</h2>
-        <p className="text-sm text-stone-500">Add many links at once. Links already in your library are skipped.</p>
+        <h2 className="section-title">Import links</h2>
+        <p className="lede">Add many links at once. Links already in your library are skipped.</p>
         <BulkImport />
       </section>
 
       <section className={section}>
-        <h2 className="font-medium">Your data</h2>
-        <p className="text-sm text-stone-500">
+        <h2 className="section-title">Your data</h2>
+        <p className="lede">
           unfold stores each page&apos;s URL, title, a short summary, tags, your note and a numeric embedding. It never
           stores full page copies. Page text is processed on this server to make the summary, tags and embedding, then
           discarded; nothing is sent to an AI service.
         </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <span className="text-stone-500">Export:</span>
-          <a href="/api/export?format=json" className="font-medium underline">JSON (everything)</a>
-          <a href="/api/export?format=csv" className="font-medium underline">CSV</a>
-          <a href="/api/export?format=html" className="font-medium underline">Browser bookmarks</a>
-          <a href="/api/export?format=txt" className="font-medium underline">Plain list</a>
-        </div>
-        <form action={deleteAllAction} className="flex flex-wrap items-center gap-2 pt-2">
-          <input
-            name="confirm"
-            placeholder='Type "delete" to confirm'
-            className="rounded-md border border-stone-300 bg-transparent px-2 py-1 text-sm dark:border-stone-700"
-          />
-          <button className="text-sm font-medium text-red-600">Delete all my data</button>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-ui">
+          <span className="text-pencil">Download your library as</span>
+          <a href="/api/export?format=json" className="link">JSON (everything)</a>
+          <a href="/api/export?format=csv" className="link">CSV</a>
+          <a href="/api/export?format=html" className="link">browser bookmarks</a>
+          <a href="/api/export?format=txt" className="link">a plain list of links</a>
+        </p>
+        <form action={deleteAllAction} className="flex flex-wrap items-center gap-3 pt-3">
+          <label htmlFor="confirm-delete" className="sr-only">
+            Type delete to confirm
+          </label>
+          <input id="confirm-delete" name="confirm" placeholder='Type "delete" to confirm' className="field max-w-56" />
+          <button className="text-ui font-semibold text-stamp hover:underline">Delete all my data</button>
         </form>
-        {deleted && <p className="text-sm text-emerald-600">All data deleted.</p>}
+        {deleted && <p className="text-ui text-pen">All your data was deleted.</p>}
       </section>
 
       <form action={signOutAction}>
-        <button className="text-sm text-stone-500 hover:underline">Sign out</button>
+        <button className="action text-ui">Sign out</button>
       </form>
     </div>
   );

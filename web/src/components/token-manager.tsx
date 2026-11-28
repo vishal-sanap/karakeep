@@ -12,17 +12,17 @@ export function TokenManager({ tokens }: { tokens: Token[] }) {
   return (
     <div className="space-y-3">
       {fresh && (
-        <div className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950">
-          <p className="mb-1 font-medium">Copy this token now. It won&apos;t be shown again.</p>
-          <code className="block break-all select-all">{fresh}</code>
+        <div className="rounded-md border border-pen p-3 text-ui">
+          <p className="mb-1 font-semibold">Copy this token now. It won&apos;t be shown again.</p>
+          <code className="block break-all select-all text-pen">{fresh}</code>
         </div>
       )}
-      <ul className="divide-y divide-stone-200 text-sm dark:divide-stone-800">
+      <ul className="divide-y divide-rule text-ui">
         {tokens.map((t) => (
           <li key={t.id} className="flex items-center justify-between py-2">
             <span>
               {t.name}
-              <span className="ml-2 text-xs text-stone-500">
+              <span className="ml-2 text-meta text-pencil">
                 created <LocalDate value={t.created_at} />
                 {t.last_used_at ? (<>, last used <LocalDate value={t.last_used_at} /></>) : ", never used"}
               </span>
@@ -30,7 +30,7 @@ export function TokenManager({ tokens }: { tokens: Token[] }) {
             <button
               disabled={pending}
               onClick={() => start(() => revokeTokenAction(t.id))}
-              className="text-xs text-red-600"
+              className="action hover:text-stamp"
             >
               Revoke
             </button>
@@ -45,7 +45,7 @@ export function TokenManager({ tokens }: { tokens: Token[] }) {
             setFresh(token ?? null);
           })
         }
-        className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium dark:border-stone-700"
+        className="btn-quiet"
       >
         Create token
       </button>

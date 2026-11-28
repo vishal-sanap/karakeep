@@ -1,8 +1,8 @@
 "use client";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { deleteAction, updateWhyAction } from "@/app/actions";
 import type { Discovery } from "@/lib/discoveries";
-import Link from "next/link";
 import { LocalDate } from "./local-date";
 import { TagList } from "./tag-list";
 
@@ -13,90 +13,114 @@ type Props = {
     enriched_at: string | null;
   };
   highlight?: boolean;
-  /** AI summaries are configured, so a ready-but-unenriched item is still being summarised. */
+  /** Saved moments ago: a ready-but-unenriched item is still being processed. */
   summarizing?: boolean;
 };
 
+/**
+ * One library entry. On wide screens the why-note hangs in the left margin
+ * in blue pen, like a note written beside a passage; on phones it sits under
+ * the title.
+ */
 export function DiscoveryCard({ d, highlight, summarizing }: Props) {
   const [editing, setEditing] = useState(false);
   const [why, setWhy] = useState(d.why_note ?? "");
   const [pending, start] = useTransition();
   const title = d.title || d.original_url;
+  const kind = d.resource_type && d.resource_type !== "webpage" ? d.resource_type : null;
+
+  const status =
+    d.status === "pending"
+      ? "Fetching the page…"
+      : d.status === "failed"
+        ? "Couldn't fetch this page"
+        : summarizing && !d.enriched_at
+          ? "Reading the page…"
+          : null;
 
   return (
     <li
-      className={`group rounded-xl border bg-white p-4 dark:bg-stone-900 ${
-        highlight ? "border-emerald-400" : "border-stone-200 dark:border-stone-800"
-      } ${pending ? "opacity-60" : ""}`}
+      className={`group grid gap-x-8 border-t border-rule py-5 lg:grid-cols-[9rem_minmax(0,1fr)] ${
+        highlight ? "bg-sheet" : ""
+      } ${pending ? "opacity-50" : ""}`}
     >
-      <div className="flex gap-3">
-        {d.favicon_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={d.favicon_url} alt="" width={16} height={16} className="mt-1 h-4 w-4 shrink-0 rounded-sm" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="mt-1 h-4 w-4 shrink-0 rounded-sm bg-stone-200 dark:bg-stone-700" />
-        )}
-        <div className="min-w-0 flex-1">
-          <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
+      <div className="min-w-0 lg:col-start-2 lg:row-start-1">
+        <div className="flex items-baseline justify-between gap-4">
+          <a href={`/open/${d.id}`} target="_blank" rel="noopener noreferrer" className="font-serif text-entry font-semibold hover:underline">
             {title}
           </a>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
-            <span>{d.domain}</span>
-            {d.resource_type && d.resource_type !== "webpage" && <span>· {d.resource_type}</span>}
-            <span>· <LocalDate value={d.saved_at} /></span>
-            {d.status === "pending" && <span className="text-amber-600">· fetching details…</span>}
-            {d.status === "failed" && <span className="text-red-600">· couldn&apos;t fetch details</span>}
-            {summarizing && d.status === "ready" && !d.enriched_at && <span className="text-amber-600">· summarising…</span>}
-          </div>
-          {d.summary && <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-stone-400">{d.summary}</p>}
-          {d.tags.length > 0 && (
-            <div className="mt-2">
-              <TagList tags={d.tags} />
-            </div>
+          <span className="shrink-0 text-meta text-pencil">
+            <LocalDate value={d.saved_at} />
+          </span>
+        </div>
+        <p className="mt-1 flex items-center gap-1.5 text-meta text-pencil">
+          {d.favicon_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={d.favicon_url} alt="" width={14} height={14} className="h-3.5 w-3.5 rounded-sm" referrerPolicy="no-referrer" />
           )}
+          <span>
+            {d.domain}
+            {kind && `, ${kind}`}
+          </span>
+        </p>
+        {status && <p className={`mt-1 text-meta ${d.status === "failed" ? "text-stamp" : "text-pencil"}`}>{status}</p>}
+      </div>
 
-          {editing ? (
-            <form
-              className="mt-2 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                start(async () => {
-                  await updateWhyAction(d.id, why);
-                  setEditing(false);
-                });
-              }}
-            >
-              <input
-                autoFocus
-                value={why}
-                maxLength={500}
-                onChange={(e) => setWhy(e.target.value)}
-                placeholder="Why did you save this?"
-                className="w-full rounded-md border border-stone-300 bg-transparent px-2 py-1 text-sm dark:border-stone-700"
-              />
-              <button className="text-sm font-medium">Save</button>
-              <button type="button" className="text-sm text-stone-500" onClick={() => setEditing(false)}>Cancel</button>
-            </form>
-          ) : d.why_note ? (
-            <p className="mt-2 border-l-2 border-amber-400 pl-2 text-sm italic">{d.why_note}</p>
-          ) : null}
-
-          <div className="mt-2 flex gap-3 text-xs text-stone-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-            <Link href={`/d/${d.id}`} className="hover:text-stone-700 dark:hover:text-stone-200">
-              Related
-            </Link>
-            {!editing && (
-              <button onClick={() => setEditing(true)} className="hover:text-stone-700 dark:hover:text-stone-200">
-                {d.why_note ? "Edit why" : "Add why"}
+      {/* Why-note: margin on wide screens, inline on phones. */}
+      <div className="mt-2 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:mt-1 lg:text-right">
+        {editing ? (
+          <form
+            className="flex flex-col gap-2 lg:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              start(async () => {
+                await updateWhyAction(d.id, why);
+                setEditing(false);
+              });
+            }}
+          >
+            <textarea
+              autoFocus
+              value={why}
+              maxLength={500}
+              rows={3}
+              onChange={(e) => setWhy(e.target.value)}
+              placeholder="Why did you save this?"
+              className="field font-serif italic text-pen"
+            />
+            <span className="flex gap-3">
+              <button className="action text-ink">Save note</button>
+              <button type="button" className="action" onClick={() => setEditing(false)}>
+                Cancel
               </button>
-            )}
-            <button
-              onClick={() => confirm("Delete this item?") && start(() => deleteAction(d.id))}
-              className="hover:text-red-600"
-            >
-              Delete
+            </span>
+          </form>
+        ) : d.why_note ? (
+          <button
+            onClick={() => setEditing(true)}
+            title="Edit why you saved this"
+            className="text-left font-serif text-ui italic leading-snug text-pen hover:underline lg:text-right"
+          >
+            {d.why_note}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="min-w-0 lg:col-start-2">
+        {d.summary && <p className="mt-2 line-clamp-2 max-w-prose font-serif text-ui text-pencil">{d.summary}</p>}
+        <TagList tags={d.tags} className="mt-2" />
+        <div className="mt-2 flex gap-4 sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+          <Link href={`/d/${d.id}`} className="action">
+            Related
+          </Link>
+          {!editing && !d.why_note && (
+            <button onClick={() => setEditing(true)} className="action">
+              Add why
             </button>
-          </div>
+          )}
+          <button onClick={() => confirm("Delete this item?") && start(() => deleteAction(d.id))} className="action hover:text-stamp">
+            Delete
+          </button>
         </div>
       </div>
     </li>

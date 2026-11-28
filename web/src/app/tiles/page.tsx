@@ -24,9 +24,9 @@ export default async function TilesPage() {
 
   return (
     // Full-bleed: break out of the centred layout column, fill the viewport under the header.
-    <div className="relative left-1/2 -mb-16 h-[calc(100dvh-5.5rem)] w-screen -translate-x-1/2 bg-[#0b0a09]">
+    <div className="relative left-1/2 -mb-20 h-[calc(100dvh-4.75rem)] w-screen -translate-x-1/2 bg-[#14171b]">
       {items.length === 0 ? (
-        <p className="pt-24 text-center text-sm text-stone-400">Save a few things first; they&apos;ll show up here as tiles.</p>
+        <p className="px-4 pt-24 text-center text-ui text-[#9ba2a9]">Save a few links first. Each one becomes a tile here.</p>
       ) : (
         <TileGrid items={items} />
       )}

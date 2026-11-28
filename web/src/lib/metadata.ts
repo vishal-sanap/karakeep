@@ -86,7 +86,7 @@ async function youtubeMetadata(videoId: string): Promise<PageMetadata | null> {
   return {
     canonicalUrl: `https://www.youtube.com/watch?v=${videoId}`,
     title: clean(s.title, 300),
-    description: clean(`${s.channelTitle} · ${s.description}`, 1000),
+    description: clean(`${s.channelTitle}: ${s.description}`, 1000),
     resourceType: "video",
     domain: "youtube.com",
     thumbnailUrl: thumb?.url ?? null,
